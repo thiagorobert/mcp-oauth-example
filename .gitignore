@@ -1,3 +1,7 @@
 __pycache__
 .env
 github_token.json
+uv.lock
+pyproject.toml
+.venv
+.python-version

@@ -2,11 +2,16 @@ import asyncio
 import dotenv
 import httpx
 import json
+from mcp.server.fastmcp import FastMCP
 import os
 import time
 from typing import Any
 
+
 dotenv.load_dotenv()  # load environment variables from .env
+
+# Initialize FastMCP server
+mcp = FastMCP("github_oauth_example")
 
 # Constants
 GITHUB_API_BASE = "https://api.github.com"
@@ -184,6 +189,7 @@ async def authenticate() -> str | None:
     
     return _access_token
 
+@mcp.tool()
 async def list_repositories() -> str:
     """List all repositories accessible to the authenticated user."""
     print("Starting list_repositories tool...")
@@ -218,6 +224,7 @@ URL: {repo['html_url']}
     
     return "\n---\n".join(repos)
 
+@mcp.tool()
 async def get_repository_info(owner: str, repo: str) -> str:
     """Get detailed information about a specific repository.
     
@@ -249,6 +256,7 @@ URL: {data['html_url']}
 Clone URL: {data['clone_url']}
 """
 
+@mcp.tool()
 async def get_user_info() -> str:
     """Get information about the authenticated user."""
     token = await authenticate()
@@ -272,3 +280,9 @@ Followers: {data['followers']}
 Following: {data['following']}
 Profile URL: {data['html_url']}
 """
+
+
+if __name__ == "__main__":
+    assert GITHUB_CLIENT_ID, "GITHUB_CLIENT_ID not available"
+    assert GITHUB_CLIENT_SECRET, "GITHUB_CLIENT_SECRET not available"
+    mcp.run(transport='stdio')
