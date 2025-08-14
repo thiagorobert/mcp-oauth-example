@@ -3,5 +3,4 @@ __pycache__
 github_token.json
 uv.lock
 pyproject.toml
-.venv
 .python-version
