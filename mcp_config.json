@@ -6,11 +6,12 @@
 				"--directory",
 				"/workspace/github/mcp-oauth-example",
 				"run",
-				"mcp_oauth_example.py"
+				"mcp_github.py",
+				"--token",
+				"${GITHUB_TOKEN}"
 			],
 			"env": {
-				"GITHUB_CLIENT_ID": "${GITHUB_CLIENT_ID}",
-				"GITHUB_CLIENT_SECRET": "${GITHUB_CLIENT_SECRET}"
+				"GITHUB_TOKEN": "${GITHUB_TOKEN}"
 			}
 		}
 	}

@@ -1,6 +1,12 @@
+# dev environment
 __pycache__
-.env
-github_token.json
 uv.lock
 pyproject.toml
 .python-version
+.coverage
+
+# local secrets
+.env
+env.backup
+github_token.json
+github_token.backup
