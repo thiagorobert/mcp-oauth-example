@@ -5,13 +5,8 @@ import httpx
 import json
 import logging
 import os
-import subprocess
-import sys
-import threading
 import time
 from typing import Any
-from mcp.client.session import ClientSession
-from mcp.client.stdio import StdioServerParameters, stdio_client
 
 # Set up module-specific logger with DEBUG level
 logger = logging.getLogger(__name__)
@@ -208,127 +203,11 @@ async def authenticate() -> str | None:
     return _access_token
 
 
-class MCPServerManager:
-    """Manages the MCP server process and client communication."""
-    
-    def __init__(self, token: str, verbose: bool = False):
-        self.token = token
-        self.verbose = verbose
-        self.process = None
-        self.server_ready = threading.Event()
-        
-    def start_server_thread(self):
-        """Start the MCP server in a separate thread."""
-        def run_server():
-            cmd = [sys.executable, "mcp_github.py", "--token", self.token]
-            if self.verbose:
-                cmd.append("-v")
-            logger.debug(f"Starting MCP server with command: {' '.join(cmd)}")
-            
-            try:
-                self.process = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
-                
-                print(f"MCP GitHub server started with PID {self.process.pid}")
-                
-                # Give the server a moment to start up
-                time.sleep(1)
-                self.server_ready.set()
-                
-                # Keep the server running
-                self.process.wait()
-                
-            except Exception as e:
-                logger.debug(f"Failed to start MCP server: {e}")
-                print(f"Failed to start MCP server: {e}")
-        
-        thread = threading.Thread(target=run_server, daemon=True)
-        thread.start()
-        return thread
-    
-    async def call_list_repositories(self):
-        """Make a call to the MCP server to list repositories."""
-        if not self.server_ready.wait(timeout=10):
-            print("Server failed to start within timeout")
-            return
-            
-        try:
-            # Create server parameters
-            args = ["mcp_github.py", "--token", self.token]
-            if self.verbose:
-                args.append("-v")
-            server_params = StdioServerParameters(
-                command=sys.executable,
-                args=args
-            )
-            
-            # Connect to the server
-            async with stdio_client(server_params) as (read, write):
-                async with ClientSession(read, write) as session:
-                    # Initialize the session
-                    await session.initialize()
-                    
-                    # List available tools
-                    tools_result = await session.list_tools()
-                    print("\nAvailable tools:")
-                    for tool in tools_result.tools:
-                        print(f"- {tool.name}: {tool.description}")
-                    
-                    # Call the list_repositories tool
-                    print("\nCalling list_repositories tool...")
-                    result = await session.call_tool("list_repositories", {})
-                    
-                    print("\nRepositories:")
-                    print(result.content[0].text if result.content else "No content returned")
-                    
-        except Exception as e:
-            logger.debug(f"Error calling MCP server: {e}")
-            print(f"Error calling MCP server: {e}")
-    
-    def shutdown(self):
-        """Shutdown the MCP server."""
-        if self.process:
-            print("\nShutting down MCP server...")
-            self.process.terminate()
-            self.process.wait()
-
-async def start_mcp_server_with_token(token: str, verbose: bool = False):
-    """Start the MCP GitHub server with the authenticated token and make a call to it."""
-    manager = MCPServerManager(token, verbose)
-    
-    try:
-        # Start server in background thread
-        server_thread = manager.start_server_thread()
-        
-        # Wait a bit for server to start, then make a call
-        await asyncio.sleep(2)
-        
-        # Make a call to list repositories
-        await manager.call_list_repositories()
-        
-        print("\nPress Ctrl+C to stop the server")
-        
-        # Wait for interruption
-        try:
-            while server_thread.is_alive():
-                await asyncio.sleep(1)
-        except KeyboardInterrupt:
-            pass
-            
-    finally:
-        manager.shutdown()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GitHub OAuth client example")
     parser.add_argument("-v", "--verbose", action="store_true", 
                        help="Enable verbose logging to stdout")
-    parser.add_argument("--start-mcp", action="store_true",
-                       help="Start MCP server after authentication")
     args = parser.parse_args()
     
     # Configure logging based on verbose flag
@@ -340,9 +219,9 @@ if __name__ == "__main__":
 
     async def main():
         token = await authenticate()
-        if token and args.start_mcp:
-            await start_mcp_server_with_token(token, args.verbose)
-        elif not token:
+        if token:
+            print(f"Authentication successful! Token saved to {TOKEN_FILE}")
+        else:
             print("Authentication failed")
             
     asyncio.run(main())

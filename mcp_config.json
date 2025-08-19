@@ -6,7 +6,7 @@
 				"--directory",
 				"/workspace/github/mcp-oauth-example",
 				"run",
-				"mcp_github.py",
+				"flask_mcp_server.py",
 				"--token",
 				"${GITHUB_TOKEN}"
 			],

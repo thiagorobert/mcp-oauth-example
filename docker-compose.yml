@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  flask-mcp-server:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # GitHub token for MCP functionality (required)
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      
+      # Auth0 configuration for Flask web app (optional)
+      - APP_SECRET_KEY=${APP_SECRET_KEY}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+    volumes:
+      # Optional: mount for persistent token storage
+      - ./github_token.json:/app/github_token.json:rw
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

@@ -4,6 +4,9 @@ uv.lock
 pyproject.toml
 .python-version
 .coverage
+tf/
+scripts/
+decode.py
 
 # local secrets
 .env

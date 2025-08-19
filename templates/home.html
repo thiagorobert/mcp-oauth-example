@@ -1,0 +1,24 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Flask + MCP Server Example</title>
+  </head>
+  <body>
+    {% if session %}
+    <h1>Welcome {{session.userinfo.name}}!</h1>
+    <p><a href="/logout" id="qsLogoutBtn">Logout</a></p>
+    <div><pre>{{pretty}}</pre></div>
+    <hr>
+    <h2>Application Status</h2>
+    <p>This application runs both a Flask web server (Waitress WSGI, default port 8080) and an MCP server on stdio.</p>
+    <p>Available MCP tools: list_repositories, get_repository_info, get_user_info</p>
+    {% else %}
+    <h1 id="profileDropDown">Welcome Guest</h1>
+    <p><a href="/login" id="qsLoginBtn">Login</a></p>
+    <hr>
+    <h2>Application Status</h2>
+    <p>This application runs both a Flask web server (Waitress WSGI, default port 8080) and an MCP server on stdio.</p>
+    <p>Available MCP tools: list_repositories, get_repository_info, get_user_info</p>
+    {% endif %}
+  </body>
+</html>
