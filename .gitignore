@@ -10,6 +10,4 @@ decode.py
 
 # local secrets
 .env
-env.backup
 github_token.json
-github_token.backup

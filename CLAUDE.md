@@ -8,10 +8,11 @@ This is an MCP (Model Context Protocol) server that demonstrates OAuth authentic
 
 ## Architecture
 
-The codebase consists of two main modules:
+The codebase consists of three main modules:
 
 - **OAuth Client (`client_with_oauth.py`)**: Standalone GitHub OAuth authentication client for obtaining and storing GitHub tokens
-- **Flask + MCP Server (`flask_mcp_server.py`)**: Combined application that provides both Flask web interface with Auth0 OAuth and MCP server functionality with GitHub API tools
+- **Flask Web Server (`flask_mcp_server.py`)**: Flask web application with Auth0 OAuth authentication and OAuth callback demonstration
+- **MCP Server (`mcp_server.py`)**: Standalone MCP server with GitHub API tools that can be integrated with the Flask app or used independently
 - **Token-Based Architecture**: Server accepts pre-authenticated tokens rather than handling authentication internally
 
 ## Key Components
@@ -22,20 +23,27 @@ The codebase consists of two main modules:
 - `save_token()` and `load_token()`: Handle persistent token storage to `github_token.json`
 - **Simplified Design**: Focuses solely on authentication; MCP server functionality moved to dedicated applications
 
-### Flask + MCP Server (`flask_mcp_server.py`)
-- **Dual Interface**: Serves both Flask web application (HTTP) and MCP server (stdio) in single process
+### Flask Web Server (`flask_mcp_server.py`)
 - **Flask Web App**: Auth0 OAuth integration for web-based authentication with production WSGI server (Waitress)
-- **MCP Server**: GitHub API tools accessible via stdio transport
-- **Unified Operation**: Always runs both Flask and MCP services together
+- **OAuth Callback Handler**: Dynamic application callback route for OAuth demonstrations at `/dynamic_application_callback`
+- **Template-Based UI**: Comprehensive callback page with structured information display
+- **Real Token Exchange**: Performs actual OAuth token exchange and user info retrieval when Auth0 credentials are configured
+- **Integrated MCP**: Can optionally run MCP server alongside Flask web server
 - **Production Ready**: Uses Waitress WSGI server for reliable, thread-safe HTTP serving
+- **Modular Design**: MCP functionality separated into dedicated module for better maintainability
+
+### MCP Server (`mcp_server.py`)
+- **Standalone Operation**: Can run independently or be integrated with Flask application
+- **GitHub API Tools**: Provides MCP tools for interacting with GitHub's REST API
 - **Token-Based Authentication**: Uses provided GitHub token for all GitHub API calls
 - **FastMCP Framework**: Implements MCP protocol for tool exposure
-- **Shared Token Management**: GitHub token can be provided via CLI argument or environment variable
+- **Configurable Logging**: Supports verbose logging for debugging
 
-### MCP Tools (Available in `flask_mcp_server.py`)
+### MCP Tools (Available in `mcp_server.py`)
 - `list_repositories()`: Fetches all repos accessible to authenticated user
 - `get_repository_info(owner, repo)`: Gets detailed info for a specific repository
 - `get_user_info()`: Retrieves authenticated user's profile information
+- `make_github_request(url, token)`: Low-level function for GitHub API requests
 
 ## Environment Setup
 
@@ -66,7 +74,7 @@ python client_with_oauth.py
 python client_with_oauth.py -v
 ```
 
-### Flask + MCP Server Application
+### Flask Web Server with Integrated MCP
 ```bash
 # Run Flask web app and MCP server together (default port 8080)
 python flask_mcp_server.py --token YOUR_GITHUB_TOKEN
@@ -77,6 +85,32 @@ python flask_mcp_server.py --port 3000 --token YOUR_GITHUB_TOKEN --verbose
 # If Auth0 environment variables are missing, only MCP server will run
 # If GitHub token is missing, only Flask server will run (with warning)
 ```
+
+### Standalone MCP Server
+```bash
+# Run only the MCP server (stdio transport)
+python mcp_server.py --token YOUR_GITHUB_TOKEN
+
+# This is equivalent to how the standalone MCP server works
+# when integrated with the Flask application
+```
+
+### Flask Web Routes
+The Flask application provides several routes:
+- `/`: Home page with Auth0 authentication status
+- `/login`: Auth0 OAuth login initiation
+- `/callback`: Auth0 OAuth callback handler
+- `/logout`: Auth0 logout and session cleanup
+- `/dynamic_application_callback`: OAuth callback demonstration page with comprehensive information display
+
+#### OAuth Callback Demonstration (`/dynamic_application_callback`)
+This route demonstrates OAuth callback handling integrated from `oauth_dynamic_application.py`:
+- **Purpose**: Educational demonstration of OAuth authorization code flow
+- **Parameters**: Accepts `code`, `state`, `error`, `error_description`, and `scope` query parameters
+- **Template-Based**: Uses `templates/callback.html` for structured information display
+- **Information Display**: Shows callback details, token structure, and user information placeholders
+- **Error Handling**: Comprehensive error state display with detailed messages
+- **Security Features**: State parameter validation and truncation of sensitive values for display
 
 ## Token Management
 
@@ -154,7 +188,10 @@ GITHUB_TOKEN=your_token_here docker-compose up
 
 Current files:
 - ✅ `client_with_oauth.py`: Standalone GitHub OAuth authentication client
-- ✅ `flask_mcp_server.py`: Combined Flask web application and MCP server
+- ✅ `flask_mcp_server.py`: Flask web application with Auth0 OAuth and callback demonstration
+- ✅ `mcp_server.py`: Standalone MCP server with GitHub API tools
+- ✅ `oauth_dynamic_application.py`: OAuth demonstration with callback server (integrated into Flask app)
+- ✅ `templates/callback.html`: OAuth callback page template with comprehensive information display
 - ✅ `CLAUDE.md`: This documentation file
 - ✅ `.gitignore`: Updated to exclude removed files
 
@@ -209,6 +246,8 @@ export GITHUB_CLIENT_ID="your_client_id"               # Optional: For OAuth flo
 export GITHUB_CLIENT_SECRET="your_client_secret"       # Optional: For OAuth flow reference
 ```
 
+**Note**: The MCP configuration in `mcp_config.json` references `mcp_github.py` but this file has been replaced by `flask_mcp_server.py`. Update the configuration to use the new unified application if needed.
+
 ### Testing with Claude CLI
 
 Use the provided `test_mcp_using_claude.sh` script to test the MCP server with Claude CLI:
@@ -236,7 +275,7 @@ Before using the MCP configuration, obtain a token via one of these methods:
 
 ## Testing
 
-The project includes a comprehensive testing suite with 50+ tests covering all functionality.
+The project includes a comprehensive testing suite with 70+ tests covering all functionality.
 
 ### Quick Test Commands
 
@@ -263,6 +302,9 @@ python -m pytest test_oauth_updated.py -v
 # Edge cases and comprehensive tests  
 python -m pytest test_comprehensive.py -v
 
+# OAuth callback route tests
+python -m pytest test_callback_route.py -v
+
 # Integration tests
 python -m pytest test_mcp_integration.py -v
 
@@ -273,14 +315,22 @@ python test_oauth_mcp.py
 ### Test Coverage
 
 The test suite covers:
-- ✅ OAuth authentication workflows
+- ✅ OAuth authentication workflows (GitHub and Auth0)
 - ✅ GitHub API tool functionality
 - ✅ Flask web application features
+- ✅ OAuth callback handling and template rendering
 - ✅ MCP server protocol compliance
 - ✅ Error handling and edge cases
 - ✅ CLI interface and configuration
 - ✅ Integration and performance scenarios
+- ✅ Template rendering and user interface components
 
 All tests use comprehensive mocking to avoid external dependencies and ensure fast, reliable execution.
+
+### Recent Test Improvements
+- ✅ Fixed pytest warnings about returning values from test functions
+- ✅ Added comprehensive tests for OAuth callback functionality
+- ✅ Enhanced integration test error handling and messaging
+- ✅ Separated MCP server tests to work with modular architecture
 
 For detailed testing information, see `TESTING.md`.
