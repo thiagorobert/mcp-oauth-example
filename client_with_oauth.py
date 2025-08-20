@@ -30,7 +30,8 @@ def setup_logging(verbose: bool = False):
         # Create handler for stdout output when verbose mode is enabled
         handler = logging.StreamHandler()
         handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(filename)s:%(lineno)d - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(
+            '%(filename)s:%(lineno)d - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
@@ -114,7 +115,7 @@ async def get_device_code() -> dict[str, Any] | None:
             return None
 
 
-async def poll_for_token(device_code: str, interval: int = 5) -> str | None:
+async def poll_for_token(device_code: str, interval: float = 5) -> str | None:
     """Poll GitHub for the access token."""
     if not GITHUB_CLIENT_ID:
         raise ValueError("GITHUB_CLIENT_ID environment variable not set")
@@ -168,7 +169,8 @@ async def authenticate() -> str | None:
         logger.debug(" Using existing access token")
         return _access_token
 
-    # Check for Personal Access Token from environment variable (automated auth)
+    # Check for Personal Access Token from environment variable (automated
+    # auth)
     if GITHUB_PERSONAL_ACCESS_TOKEN:
         logger.debug("Using Personal Access Token from environment: %s",
                      GITHUB_PERSONAL_ACCESS_TOKEN)
@@ -194,8 +196,9 @@ async def authenticate() -> str | None:
     print(f" 2. Enter code: {device_info['user_code']}")
     print(" 3. Waiting for authentication...")
     print(f" (Code expires in {device_info.get('expires_in', 900)} seconds)")
-    print("\nAlternatively, set GITHUB_PERSONAL_ACCESS_TOKEN environment variable "
-          "with a Personal Access Token for automated authentication.")
+    print(
+        "\nAlternatively, set GITHUB_PERSONAL_ACCESS_TOKEN environment variable "
+        "with a Personal Access Token for automated authentication.")
 
     # Poll for token
     _access_token = await poll_for_token(

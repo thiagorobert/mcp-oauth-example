@@ -4,12 +4,21 @@ Unit tests for the /dynamic_application_callback route in flask_mcp_server.py
 This module tests the OAuth callback functionality that was integrated from oauth_dynamic_application.py
 """
 
-from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from flask_mcp_server import OAuth2Client, app
+
+
+@pytest.fixture
+def mock_config_with_oauth():
+    """Mock config with OAuth credentials for token exchange tests."""
+    with patch('flask_mcp_server.config') as mock_config:
+        mock_config.dynamic_client_id = "test_client_id"
+        mock_config.dynamic_client_secret = "test_client_secret"
+        mock_config.auth0_domain = "test.auth0.com"
+        yield mock_config
 
 
 class TestDynamicApplicationCallback:
@@ -23,12 +32,14 @@ class TestDynamicApplicationCallback:
             yield client
 
     @pytest.fixture(autouse=True)
-    def mock_auth0_env(self):
-        """Mock Auth0 environment variables to prevent real API calls."""
-        with patch('flask_mcp_server.env') as mock_env:
-            # Return None for Dynamic OAuth credentials to prevent real token exchange
-            mock_env.get.return_value = None
-            yield mock_env
+    def mock_config(self):
+        """Mock config to prevent real API calls."""
+        with patch('flask_mcp_server.config') as mock_config:
+            # Set up test config values - default to None to prevent real calls
+            mock_config.dynamic_client_id = None
+            mock_config.dynamic_client_secret = None
+            mock_config.auth0_domain = "test.auth0.com"
+            yield mock_config
 
     def test_callback_success_with_code(self, client):
         """Test successful OAuth callback with authorization code."""
@@ -102,7 +113,8 @@ class TestDynamicApplicationCallback:
         assert response.status_code == 200
         content = response.data.decode()
 
-        # Error should take precedence over code - logic is `success = bool(code and not error)`
+        # Error should take precedence over code - logic is `success =
+        # bool(code and not error)`
         assert '❌ Authentication Failed' in content  # Error takes precedence
         assert '✅ Authentication Successful!' not in content
         assert 'invalid_request' in content
@@ -110,7 +122,8 @@ class TestDynamicApplicationCallback:
 
     def test_callback_only_error_no_description(self, client):
         """Test callback with error but no description."""
-        response = client.get('/dynamic_application_callback?error=server_error')
+        response = client.get(
+            '/dynamic_application_callback?error=server_error')
 
         assert response.status_code == 200
         content = response.data.decode()
@@ -165,7 +178,8 @@ class TestDynamicApplicationCallback:
         long_code = 'a' * 100
         long_state = 'b' * 80
 
-        response = client.get(f'/dynamic_application_callback?code={long_code}&state={long_state}')
+        response = client.get(
+            f'/dynamic_application_callback?code={long_code}&state={long_state}')
 
         assert response.status_code == 200
         content = response.data.decode()
@@ -178,7 +192,8 @@ class TestDynamicApplicationCallback:
 
     def test_callback_template_structure(self, client):
         """Test that the callback template has the expected structure."""
-        response = client.get('/dynamic_application_callback?code=test123&state=abc456')
+        response = client.get(
+            '/dynamic_application_callback?code=test123&state=abc456')
 
         assert response.status_code == 200
         content = response.data.decode()
@@ -190,8 +205,9 @@ class TestDynamicApplicationCallback:
         assert 'class="success"' in content
         assert 'class="info-section"' in content
         assert 'class="info-grid"' in content
-        # Note: auto_close is False by default, so these links don't appear
-        assert 'class="close-notice"' in content
+        # Note: auto_close is False by default, so close-notice doesn't appear
+        # The CSS class is defined but the element is only rendered when
+        # auto_close=True
 
     def test_callback_token_info_structure(self, client):
         """Test that token info is properly structured when code is present."""
@@ -221,7 +237,8 @@ class TestDynamicApplicationCallback:
         assert 'Name:' in content
         assert 'Email:' in content
         assert 'Subject ID:' in content
-        assert 'Auth0 credentials required for user info' in content  # Updated placeholder text
+        # Updated placeholder text
+        assert 'Auth0 credentials required for user info' in content
 
     def test_callback_auto_close_disabled(self, client):
         """Test that auto-close is disabled in the template."""
@@ -232,7 +249,8 @@ class TestDynamicApplicationCallback:
 
         # Auto-close should be disabled based on the template context
         # The JavaScript auto-close should not execute since auto_close=False
-        # Check that the auto-close script section is empty (no setTimeout call)
+        # Check that the auto-close script section is empty (no setTimeout
+        # call)
         assert 'setTimeout' not in content  # No auto-close timer should be present
 
     def test_callback_csrf_state_handling(self, client):
@@ -248,15 +266,18 @@ class TestDynamicApplicationCallback:
 
         for state in state_values:
             if state:
-                response = client.get(f'/dynamic_application_callback?code=test&state={state}')
+                response = client.get(
+                    f'/dynamic_application_callback?code=test&state={state}')
             else:
-                response = client.get('/dynamic_application_callback?code=test&state=')
+                response = client.get(
+                    '/dynamic_application_callback?code=test&state=')
 
             assert response.status_code == 200
             content = response.data.decode()
 
             if state:
-                # State values longer than 20 chars get truncated in template: first20...last10
+                # State values longer than 20 chars get truncated in template:
+                # first20...last10
                 if len(state) > 20:
                     assert state[:20] in content  # First 20 chars
                     assert state[-10:] in content  # Last 10 chars
@@ -279,9 +300,11 @@ class TestDynamicApplicationCallback:
 
         for url_scope, expected_scope in scope_tests:
             if url_scope:
-                response = client.get(f'/dynamic_application_callback?code=test&scope={url_scope}')
+                response = client.get(
+                    f'/dynamic_application_callback?code=test&scope={url_scope}')
             else:
-                response = client.get('/dynamic_application_callback?code=test&scope=')
+                response = client.get(
+                    '/dynamic_application_callback?code=test&scope=')
 
             assert response.status_code == 200
             content = response.data.decode()
@@ -304,7 +327,9 @@ class TestDynamicApplicationCallback:
 
         for error_code, error_desc in error_tests:
             response = client.get(
-                f'/dynamic_application_callback?error={error_code}&error_description={error_desc.replace(" ", "%20")}')
+                f'/dynamic_application_callback?error={error_code}&error_description={
+                    error_desc.replace(
+                        " ", "%20")}')
 
             assert response.status_code == 200
             content = response.data.decode()
@@ -320,10 +345,15 @@ class TestDynamicApplicationCallback:
         assert response.status_code == 200
         content = response.data.decode()
 
-        # With auto_close=False, navigation links don't appear but close notice does
-        assert 'class="close-notice"' in content
-        assert 'This window should close automatically' in content
-        # The actual navigation links only appear when auto_close=True
+        # With auto_close=False (default), navigation links and close notice
+        # don't appear
+        assert 'class="close-notice"' not in content
+        assert 'This window should close automatically' not in content
+        assert 'Return to Home' not in content
+        assert 'Close Window' not in content
+
+        # But the success message should still be there
+        assert '✅ Authentication Successful!' in content
 
 
 class TestCallbackRouteIntegration:
@@ -336,6 +366,16 @@ class TestCallbackRouteIntegration:
         with app.test_client() as client:
             yield client
 
+    @pytest.fixture(autouse=True)
+    def mock_config(self):
+        """Mock config to prevent real OAuth processing and speed up tests."""
+        with patch('flask_mcp_server.config') as mock_config:
+            # Set up test config values - default to None to prevent real calls
+            mock_config.dynamic_client_id = None
+            mock_config.dynamic_client_secret = None
+            mock_config.auth0_domain = "test.auth0.com"
+            yield mock_config
+
     def test_callback_route_exists(self, client):
         """Test that the callback route is properly registered."""
         # Test that the route exists and responds
@@ -346,10 +386,13 @@ class TestCallbackRouteIntegration:
         response_404 = client.get('/nonexistent_route')
         assert response_404.status_code == 404
 
+    # These tests are slow, need to figure out why.
+
     def test_callback_with_home_navigation(self, client):
         """Test navigation from callback back to home."""
         # First test the callback
-        callback_response = client.get('/dynamic_application_callback?code=test123')
+        callback_response = client.get(
+            '/dynamic_application_callback?code=test123')
         assert callback_response.status_code == 200
 
         # Test that home route exists and is accessible
@@ -381,15 +424,9 @@ class TestOAuth2ClientIntegration:
             yield client
 
     @patch('flask_mcp_server.OAuth2Client')
-    @patch('flask_mcp_server.env')
-    def test_callback_with_real_token_exchange_success(self, mock_env, mock_oauth_client_class, client):
+    def test_callback_with_real_token_exchange_success(
+            self, mock_oauth_client_class, mock_config_with_oauth, client):
         """Test callback with successful token exchange and user info retrieval."""
-        # Setup environment variables for dynamic OAuth (callback route uses DYNAMIC_* vars)
-        mock_env.get.side_effect = lambda key: {
-            'DYNAMIC_CLIENT_ID': 'test_client_id',
-            'DYNAMIC_CLIENT_SECRET': 'test_client_secret',
-            'AUTH0_DOMAIN': 'test.auth0.com'
-        }.get(key)
 
         # Mock OAuth client instance
         mock_oauth_client = Mock()
@@ -419,7 +456,8 @@ class TestOAuth2ClientIntegration:
         mock_oauth_client.get_user_info.return_value = mock_user_response
 
         # Make request
-        response = client.get('/dynamic_application_callback?code=test_auth_code&state=test_state')
+        response = client.get(
+            '/dynamic_application_callback?code=test_auth_code&state=test_state')
 
         assert response.status_code == 200
         content = response.data.decode()
@@ -432,19 +470,15 @@ class TestOAuth2ClientIntegration:
         assert 'Bearer' in content
 
         # Verify OAuth client was called correctly
-        mock_oauth_client.exchange_code_for_token.assert_called_once_with('test_auth_code')
-        mock_oauth_client.get_user_info.assert_called_once_with('test_access_token')
+        mock_oauth_client.exchange_code_for_token.assert_called_once_with(
+            'test_auth_code')
+        mock_oauth_client.get_user_info.assert_called_once_with(
+            'test_access_token')
 
     @patch('flask_mcp_server.OAuth2Client')
-    @patch('flask_mcp_server.env')
-    def test_callback_with_token_exchange_failure(self, mock_env, mock_oauth_client_class, client):
+    def test_callback_with_token_exchange_failure(
+            self, mock_oauth_client_class, mock_config_with_oauth, client):
         """Test callback when token exchange fails."""
-        # Setup environment variables for dynamic OAuth (callback route uses DYNAMIC_* vars)
-        mock_env.get.side_effect = lambda key: {
-            'DYNAMIC_CLIENT_ID': 'test_client_id',
-            'DYNAMIC_CLIENT_SECRET': 'test_client_secret',
-            'AUTH0_DOMAIN': 'test.auth0.com'
-        }.get(key)
 
         # Mock OAuth client instance
         mock_oauth_client = Mock()
@@ -454,7 +488,8 @@ class TestOAuth2ClientIntegration:
         mock_oauth_client.exchange_code_for_token.return_value = None
 
         # Make request
-        response = client.get('/dynamic_application_callback?code=test_auth_code&state=test_state')
+        response = client.get(
+            '/dynamic_application_callback?code=test_auth_code&state=test_state')
 
         assert response.status_code == 200
         content = response.data.decode()
@@ -464,19 +499,17 @@ class TestOAuth2ClientIntegration:
         assert 'Failed to exchange authorization code for token' in content
 
         # Verify OAuth client was called
-        mock_oauth_client.exchange_code_for_token.assert_called_once_with('test_auth_code')
+        mock_oauth_client.exchange_code_for_token.assert_called_once_with(
+            'test_auth_code')
         mock_oauth_client.get_user_info.assert_not_called()
 
     @patch('flask_mcp_server.OAuth2Client')
-    @patch('flask_mcp_server.env')
-    def test_callback_with_user_info_failure(self, mock_env, mock_oauth_client_class, client):
+    def test_callback_with_user_info_failure(
+            self,
+            mock_oauth_client_class,
+            mock_config_with_oauth,
+            client):
         """Test callback when user info retrieval fails."""
-        # Setup environment variables for dynamic OAuth (callback route uses DYNAMIC_* vars)
-        mock_env.get.side_effect = lambda key: {
-            'DYNAMIC_CLIENT_ID': 'test_client_id',
-            'DYNAMIC_CLIENT_SECRET': 'test_client_secret',
-            'AUTH0_DOMAIN': 'test.auth0.com'
-        }.get(key)
 
         # Mock OAuth client instance
         mock_oauth_client = Mock()
@@ -494,7 +527,8 @@ class TestOAuth2ClientIntegration:
         mock_oauth_client.get_user_info.return_value = None
 
         # Make request
-        response = client.get('/dynamic_application_callback?code=test_auth_code&state=test_state')
+        response = client.get(
+            '/dynamic_application_callback?code=test_auth_code&state=test_state')
 
         assert response.status_code == 200
         content = response.data.decode()
@@ -504,17 +538,22 @@ class TestOAuth2ClientIntegration:
         assert 'test_access_token' in content
 
         # Verify both methods were called
-        mock_oauth_client.exchange_code_for_token.assert_called_once_with('test_auth_code')
-        mock_oauth_client.get_user_info.assert_called_once_with('test_access_token')
+        mock_oauth_client.exchange_code_for_token.assert_called_once_with(
+            'test_auth_code')
+        mock_oauth_client.get_user_info.assert_called_once_with(
+            'test_access_token')
 
-    @patch('flask_mcp_server.env')
-    def test_callback_without_auth0_credentials(self, mock_env, client):
+    @patch('flask_mcp_server.config')
+    def test_callback_without_auth0_credentials(self, mock_config, client):
         """Test callback when Auth0 credentials are not configured."""
-        # Mock missing Auth0 credentials
-        mock_env.get.return_value = None
+        # Explicitly mock config with None credentials to ensure fast execution
+        mock_config.dynamic_client_id = None
+        mock_config.dynamic_client_secret = None
+        mock_config.auth0_domain = "test.auth0.com"
 
         # Make request
-        response = client.get('/dynamic_application_callback?code=test_auth_code&state=test_state')
+        response = client.get(
+            '/dynamic_application_callback?code=test_auth_code&state=test_state')
 
         assert response.status_code == 200
         content = response.data.decode()
@@ -525,21 +564,17 @@ class TestOAuth2ClientIntegration:
         assert 'Configure AUTH0_* environment variables' in content
 
     @patch('flask_mcp_server.OAuth2Client')
-    @patch('flask_mcp_server.env')
-    def test_callback_with_oauth_client_exception(self, mock_env, mock_oauth_client_class, client):
+    def test_callback_with_oauth_client_exception(
+            self, mock_oauth_client_class, mock_config_with_oauth, client):
         """Test callback when OAuth client raises an exception."""
-        # Setup environment variables for dynamic OAuth (callback route uses DYNAMIC_* vars)
-        mock_env.get.side_effect = lambda key: {
-            'DYNAMIC_CLIENT_ID': 'test_client_id',
-            'DYNAMIC_CLIENT_SECRET': 'test_client_secret',
-            'AUTH0_DOMAIN': 'test.auth0.com'
-        }.get(key)
 
         # Mock OAuth client to raise exception
-        mock_oauth_client_class.side_effect = Exception("OAuth client initialization failed")
+        mock_oauth_client_class.side_effect = Exception(
+            "OAuth client initialization failed")
 
         # Make request
-        response = client.get('/dynamic_application_callback?code=test_auth_code&state=test_state')
+        response = client.get(
+            '/dynamic_application_callback?code=test_auth_code&state=test_state')
 
         assert response.status_code == 200
         content = response.data.decode()
@@ -549,15 +584,12 @@ class TestOAuth2ClientIntegration:
         assert 'Token exchange error: OAuth client initialization failed' in content
 
     @patch('flask_mcp_server.OAuth2Client')
-    @patch('flask_mcp_server.env')
-    def test_callback_token_exchange_timeout(self, mock_env, mock_oauth_client_class, client):
+    def test_callback_token_exchange_timeout(
+            self,
+            mock_oauth_client_class,
+            mock_config_with_oauth,
+            client):
         """Test callback when token exchange times out."""
-        # Setup environment variables for dynamic OAuth (callback route uses DYNAMIC_* vars)
-        mock_env.get.side_effect = lambda key: {
-            'DYNAMIC_CLIENT_ID': 'test_client_id',
-            'DYNAMIC_CLIENT_SECRET': 'test_client_secret',
-            'AUTH0_DOMAIN': 'test.auth0.com'
-        }.get(key)
 
         # Mock OAuth client instance
         mock_oauth_client = Mock()
@@ -569,7 +601,8 @@ class TestOAuth2ClientIntegration:
             "Request timed out")
 
         # Make request
-        response = client.get('/dynamic_application_callback?code=test_auth_code&state=test_state')
+        response = client.get(
+            '/dynamic_application_callback?code=test_auth_code&state=test_state')
 
         assert response.status_code == 200
         content = response.data.decode()
@@ -640,7 +673,8 @@ class TestOAuth2Client:
         """Test token exchange failure."""
         # Mock failed response
         import requests
-        mock_post.side_effect = requests.exceptions.RequestException("HTTP 400 Error")
+        mock_post.side_effect = requests.exceptions.RequestException(
+            "HTTP 400 Error")
 
         client = OAuth2Client(
             client_id='test_id',
@@ -692,7 +726,8 @@ class TestOAuth2Client:
         """Test user info retrieval failure."""
         # Mock failed response
         import requests
-        mock_get.side_effect = requests.exceptions.RequestException("HTTP 401 Error")
+        mock_get.side_effect = requests.exceptions.RequestException(
+            "HTTP 401 Error")
 
         client = OAuth2Client(
             client_id='test_id',

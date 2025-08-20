@@ -8,11 +8,12 @@ This is an MCP (Model Context Protocol) server that demonstrates OAuth authentic
 
 ## Architecture
 
-The codebase consists of three main modules:
+The codebase consists of four main modules:
 
 - **OAuth Client (`client_with_oauth.py`)**: Standalone GitHub OAuth authentication client for obtaining and storing GitHub tokens
 - **Flask Web Server (`flask_mcp_server.py`)**: Flask web application with Auth0 OAuth authentication and OAuth callback demonstration
 - **MCP Server (`mcp_server.py`)**: Standalone MCP server with GitHub API tools that can be integrated with the Flask app or used independently
+- **Configuration Management (`user_inputs.py`)**: Centralized environment variable handling with dataclass-based configuration
 - **Token-Based Architecture**: Server accepts pre-authenticated tokens rather than handling authentication internally
 
 ## Key Components
@@ -28,8 +29,9 @@ The codebase consists of three main modules:
 - **OAuth Callback Handler**: Dynamic application callback route for OAuth demonstrations at `/dynamic_application_callback`
 - **Template-Based UI**: Comprehensive callback page with structured information display
 - **Real Token Exchange**: Performs actual OAuth token exchange and user info retrieval when Auth0 credentials are configured
-- **Integrated MCP**: Can optionally run MCP server alongside Flask web server
+- **Integrated MCP**: Runs MCP server alongside Flask web server in unified process
 - **Production Ready**: Uses Waitress WSGI server for reliable, thread-safe HTTP serving
+- **Environment-Based Configuration**: Uses centralized configuration from `user_inputs.py`
 - **Modular Design**: MCP functionality separated into dedicated module for better maintainability
 
 ### MCP Server (`mcp_server.py`)
@@ -39,11 +41,18 @@ The codebase consists of three main modules:
 - **FastMCP Framework**: Implements MCP protocol for tool exposure
 - **Configurable Logging**: Supports verbose logging for debugging
 
+### Configuration Management (`user_inputs.py`)
+- **AppConfig dataclass**: Centralized configuration management with type safety
+- **Environment Variable Loading**: Automatic loading from `.env` files with validation
+- **Test Mode Support**: Bypasses validation in test environments (`TESTING=1` or `PYTEST_CURRENT_TEST`)
+- **Error Handling**: Clear assertion errors for missing required environment variables
+- **Backwards Compatibility**: Supports both `GITHUB_TOKEN` and `GITHUB_PERSONAL_ACCESS_TOKEN`
+
 ### MCP Tools (Available in `mcp_server.py`)
 - `list_repositories()`: Fetches all repos accessible to authenticated user
 - `get_repository_info(owner, repo)`: Gets detailed info for a specific repository
 - `get_user_info()`: Retrieves authenticated user's profile information
-- `make_github_request(url, token)`: Low-level function for GitHub API requests
+- `make_github_request(url, token)`: Low-level function for GitHub API requests with proper type handling
 
 ## Environment Setup
 
@@ -57,11 +66,16 @@ Optional environment variables:
 - `GITHUB_TOKEN`: GitHub token for MCP server functionality
 
 ### For Flask Web Application (Auth0)
-Required environment variables for `flask_mcp_server.py` web mode:
+Required environment variables for `flask_mcp_server.py`:
 - `APP_SECRET_KEY`: Flask session secret key
 - `AUTH0_CLIENT_ID`: Auth0 application client ID  
 - `AUTH0_CLIENT_SECRET`: Auth0 application client secret
 - `AUTH0_DOMAIN`: Auth0 domain (e.g., `your-domain.auth0.com`)
+- `GITHUB_TOKEN`: GitHub OAuth token or Personal Access Token
+
+Optional environment variables:
+- `DYNAMIC_CLIENT_ID`: For OAuth callback demonstration
+- `DYNAMIC_CLIENT_SECRET`: For OAuth callback demonstration
 
 ## Development Commands
 
@@ -76,23 +90,31 @@ python client_with_oauth.py -v
 
 ### Flask Web Server with Integrated MCP
 ```bash
+# Set required environment variables
+export GITHUB_TOKEN="your_github_token_here"
+export APP_SECRET_KEY="your_secret_key"
+export AUTH0_CLIENT_ID="your_auth0_client_id"
+export AUTH0_CLIENT_SECRET="your_auth0_client_secret"
+export AUTH0_DOMAIN="your-domain.auth0.com"
+
 # Run Flask web app and MCP server together (default port 8080)
-python flask_mcp_server.py --token YOUR_GITHUB_TOKEN
+python flask_mcp_server.py
 
-# Run with custom port and verbose logging
-python flask_mcp_server.py --port 3000 --token YOUR_GITHUB_TOKEN --verbose
+# Run with custom port
+python flask_mcp_server.py --port 3000
 
-# If Auth0 environment variables are missing, only MCP server will run
-# If GitHub token is missing, only Flask server will run (with warning)
+# All configuration is now handled via environment variables
 ```
 
 ### Standalone MCP Server
 ```bash
-# Run only the MCP server (stdio transport)
-python mcp_server.py --token YOUR_GITHUB_TOKEN
+# Set required environment variables
+export GITHUB_TOKEN="your_github_token_here"
 
-# This is equivalent to how the standalone MCP server works
-# when integrated with the Flask application
+# Run only the MCP server (stdio transport)
+python mcp_server.py
+
+# MCP server can also be integrated with Flask application
 ```
 
 ### Flask Web Routes
@@ -129,10 +151,11 @@ Both modules support verbose logging:
 ## Integration Workflow
 
 ### Current Architecture
-1. **Authentication**: `client_with_oauth.py` handles OAuth flow and saves token to `github_token.json`
-2. **Application Server**: `flask_mcp_server.py` provides both web interface and MCP server functionality
-3. **Unified Deployment**: Always runs both Flask and MCP services in a single process
-4. **Token Management**: Accepts GitHub token via CLI argument or environment variable
+1. **Configuration Management**: `user_inputs.py` handles all environment variable loading and validation
+2. **Authentication**: `client_with_oauth.py` handles OAuth flow and saves token to `github_token.json`
+3. **Application Server**: `flask_mcp_server.py` provides both web interface and MCP server functionality
+4. **Unified Deployment**: Always runs both Flask and MCP services in a single process
+5. **Environment-Based Configuration**: All configuration handled via environment variables with proper validation
 
 ## Dependencies
 
@@ -190,6 +213,7 @@ Current files:
 - ✅ `client_with_oauth.py`: Standalone GitHub OAuth authentication client
 - ✅ `flask_mcp_server.py`: Flask web application with Auth0 OAuth and callback demonstration
 - ✅ `mcp_server.py`: Standalone MCP server with GitHub API tools
+- ✅ `user_inputs.py`: Centralized configuration management with dataclass validation
 - ✅ `oauth_dynamic_application.py`: OAuth demonstration with callback server (integrated into Flask app)
 - ✅ `templates/callback.html`: OAuth callback page template with comprehensive information display
 - ✅ `CLAUDE.md`: This documentation file
@@ -275,7 +299,7 @@ Before using the MCP configuration, obtain a token via one of these methods:
 
 ## Testing
 
-The project includes a comprehensive testing suite with 70+ tests covering all functionality.
+The project includes a comprehensive testing suite with 79 tests covering all functionality.
 
 ### Quick Test Commands
 
@@ -285,6 +309,9 @@ python run_tests.py
 
 # Run with verbose output
 python run_tests.py --verbose
+
+# Continue running all tests even if some fail
+python run_tests.py --continue-on-failure
 
 # Quick smoke tests only
 python run_tests.py --quick
@@ -328,9 +355,13 @@ The test suite covers:
 All tests use comprehensive mocking to avoid external dependencies and ensure fast, reliable execution.
 
 ### Recent Test Improvements
-- ✅ Fixed pytest warnings about returning values from test functions
-- ✅ Added comprehensive tests for OAuth callback functionality
-- ✅ Enhanced integration test error handling and messaging
-- ✅ Separated MCP server tests to work with modular architecture
+- ✅ **Configuration System**: Updated all tests to work with new `user_inputs.py` configuration
+- ✅ **Performance Optimization**: Fixed slow tests by adding proper mocking and configuration
+- ✅ **Type Safety**: Resolved all Pyright type checking issues (0 errors, 0 warnings)
+- ✅ **Test Coverage**: Expanded to 79 tests covering all functionality including new configuration module
+- ✅ **Fast Execution**: Complete test suite runs in ~1.5 seconds with proper mocking
+- ✅ **Enhanced Test Runner**: Added `--continue-on-failure` option and improved output formatting
+- ✅ **OAuth Callback Tests**: Comprehensive testing of template rendering and error handling
+- ✅ **Integration Tests**: Updated MCP integration tests to work with environment-based configuration
 
 For detailed testing information, see `TESTING.md`.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive additional tests to improve coverage for the MCP OAuth GitHub example.
+Comprehensive additional tests to improve coverage for the example.
 
 This file contains additional edge cases, error conditions, and comprehensive
 integration tests to ensure robust functionality.
@@ -9,10 +9,9 @@ integration tests to ensure robust functionality.
 import asyncio
 import json
 import os
-import subprocess
 import tempfile
 import unittest
-from unittest.mock import AsyncMock, MagicMock, Mock, mock_open, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import pytest
@@ -119,7 +118,8 @@ class TestClientOAuthAsyncEdgeCases:
         success_response.json.return_value = {'access_token': 'test_token'}
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.post.side_effect = [slow_down_response, success_response]
+        mock_client_instance.post.side_effect = [
+            slow_down_response, success_response]
         mock_client.return_value.__aenter__.return_value = mock_client_instance
 
         with patch.dict(os.environ, {'GITHUB_CLIENT_ID': 'test_client_id'}):
@@ -133,7 +133,8 @@ class TestClientOAuthAsyncEdgeCases:
         """Test token polling with unknown error."""
         mock_response = Mock()
         mock_response.json.return_value = {
-            'error': 'unknown_error', 'error_description': 'Something went wrong'}
+            'error': 'unknown_error',
+            'error_description': 'Something went wrong'}
 
         mock_client_instance = AsyncMock()
         mock_client_instance.post.return_value = mock_response
@@ -145,7 +146,8 @@ class TestClientOAuthAsyncEdgeCases:
         assert result is None
 
     @patch('client_with_oauth.get_device_code')
-    async def test_authenticate_device_code_failure(self, mock_get_device_code):
+    async def test_authenticate_device_code_failure(
+            self, mock_get_device_code):
         """Test authentication when device code retrieval fails."""
         mock_get_device_code.return_value = None
 
@@ -183,7 +185,8 @@ class TestFlaskMCPServerAsyncEdgeCases:
     async def test_make_github_request_timeout(self, mock_client):
         """Test GitHub API request with timeout."""
         mock_client_instance = AsyncMock()
-        mock_client_instance.get.side_effect = httpx.TimeoutException("Request timeout")
+        mock_client_instance.get.side_effect = httpx.TimeoutException(
+            "Request timeout")
         mock_client.return_value.__aenter__.return_value = mock_client_instance
 
         result = await mcp_server.make_github_request(
@@ -278,14 +281,15 @@ class TestFlaskMCPServerCLI(unittest.TestCase):
     def test_cli_help(self):
         """Test CLI help functionality."""
         import argparse
-        parser = argparse.ArgumentParser(description="Flask web app with MCP server")
+        parser = argparse.ArgumentParser(
+            description="Flask web app with MCP server")
         parser.add_argument("--token", help="GitHub OAuth access token")
         parser.add_argument("--port", type=int, default=8080)
         parser.add_argument("-v", "--verbose", action="store_true")
 
         # This should not raise an exception
         try:
-            args = parser.parse_args(['--help'])
+            parser.parse_args(['--help'])
         except SystemExit:
             # argparse calls sys.exit() on --help, which is expected
             pass
@@ -293,8 +297,8 @@ class TestFlaskMCPServerCLI(unittest.TestCase):
     def test_cli_argument_parsing(self):
         """Test CLI argument parsing."""
         import argparse
-        parser = argparse.ArgumentParser(description="Flask web app with MCP server")
-        parser.add_argument("--token", help="GitHub OAuth access token")
+        parser = argparse.ArgumentParser(
+            description="Flask web app with MCP server")
         parser.add_argument("--port", type=int, default=8080)
         parser.add_argument("-v", "--verbose", action="store_true")
 
@@ -302,11 +306,9 @@ class TestFlaskMCPServerCLI(unittest.TestCase):
         args = parser.parse_args([])
         self.assertEqual(args.port, 8080)
         self.assertFalse(args.verbose)
-        self.assertIsNone(args.token)
 
         # Test custom values
-        args = parser.parse_args(["--token", "test_token", "--port", "8080", "-v"])
-        self.assertEqual(args.token, "test_token")
+        args = parser.parse_args(["--port", "8080", "-v"])
         self.assertEqual(args.port, 8080)
         self.assertTrue(args.verbose)
 

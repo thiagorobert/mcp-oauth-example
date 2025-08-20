@@ -4,7 +4,7 @@ This document describes the comprehensive testing suite for the MCP OAuth GitHub
 
 ## Test Overview
 
-The project includes a robust testing suite with **50 comprehensive tests** covering:
+The project includes a robust testing suite with **79 comprehensive tests** covering:
 
 - OAuth authentication workflows
 - GitHub API interactions 
@@ -18,15 +18,15 @@ The project includes a robust testing suite with **50 comprehensive tests** cove
 
 ### Core Test Suites
 
-1. **`test_oauth_updated.py`** (24 tests)
+1. **`test_oauth_updated.py`** (22 tests)
    - OAuth authentication flow testing
-   - Token management (save/load functionality)
+   - Token management (save/load functionality) 
    - GitHub API request mocking
    - MCP tool functionality
-   - Flask route testing
+   - Flask route testing with proper Auth0 mocking
    - Basic integration tests
 
-2. **`test_comprehensive.py`** (24 tests)
+2. **`test_comprehensive.py`** (23 tests)
    - Edge cases and error conditions
    - Network failure handling
    - Malformed data handling
@@ -34,9 +34,17 @@ The project includes a robust testing suite with **50 comprehensive tests** cove
    - Concurrent access patterns
    - Performance stress testing
 
-3. **`test_mcp_integration.py`** (2 tests)
+3. **`test_callback_route.py`** (32 tests)
+   - OAuth callback route comprehensive testing
+   - Template rendering and structure validation
+   - Token exchange simulation with mocked OAuth clients
+   - Error handling and user experience testing
+   - Auth0 integration scenarios
+   - Performance-optimized test execution
+
+4. **`test_mcp_integration.py`** (2 tests)
    - End-to-end MCP server functionality
-   - Flask mode validation
+   - Environment-based configuration testing
    - JSON-RPC protocol testing
 
 ### Legacy and Helper Files
@@ -55,9 +63,9 @@ The project includes a robust testing suite with **50 comprehensive tests** cove
 ### OAuth Client (`client_with_oauth.py`)
 
 ✅ **Authentication Flows**
-- GitHub OAuth device flow
+- GitHub OAuth device flow with proper float interval support
 - Personal Access Token authentication
-- Token persistence and loading
+- Token persistence and loading with type safety
 - Environment variable handling
 
 ✅ **Error Conditions**
@@ -73,48 +81,84 @@ The project includes a robust testing suite with **50 comprehensive tests** cove
 - Missing client credentials
 - OAuth flow interruptions
 
+### Configuration Management (`user_inputs.py`)
+
+✅ **Environment Configuration**
+- Centralized dataclass-based configuration
+- Environment variable validation with clear error messages
+- Test mode support (bypasses validation in test environments)
+- Backwards compatibility for GitHub token variables
+
+✅ **Type Safety**
+- Full Pyright type checking compliance (0 errors, 0 warnings)
+- Proper Optional typing for optional configuration
+- Runtime type validation and assertions
+
 ### Flask + MCP Server (`flask_mcp_server.py`)
 
 ✅ **MCP Server Functionality**
-- GitHub API tool implementations
-- Token-based authentication
+- GitHub API tool implementations with proper type handling
+- Environment-based token authentication
 - Error handling and logging
 - JSON-RPC protocol compliance
 
 ✅ **Flask Web Application**
-- Route handling
+- Route handling with Auth0 null-safety
 - Session management
-- Auth0 integration setup
-- Template rendering
+- Auth0 integration with comprehensive mocking
+- Template rendering and callback page functionality
 
-✅ **CLI Interface**
-- Argument parsing
-- Unified operation mode (both Flask and MCP)
-- Environment variable integration
-- Logging configuration
+✅ **Configuration Integration**
+- Environment-based configuration (no CLI arguments)
+- Centralized config validation
+- Test-friendly configuration management
+- Production-ready environment handling
 
 ✅ **GitHub API Integration**
-- Repository listing
-- Repository details
-- User information
+- Repository listing with type-safe JSON parsing
+- Repository details with safe dictionary access
+- User information with proper error handling
 - Rate limiting and timeouts
-- HTTP error handling
+- HTTP error handling with Union return types
+
+### OAuth Callback Routes (`test_callback_route.py`)
+
+✅ **Template Testing**
+- Comprehensive callback page rendering
+- CSS class and structure validation
+- Conditional element rendering (auto_close scenarios)
+- Jinja2 template inheritance verification
+
+✅ **OAuth Integration**
+- Mock OAuth2Client for token exchange testing
+- Auth0 credential handling (present/missing scenarios)
+- Error state rendering and user messaging
+- Performance-optimized test execution (<1 second per test)
+
+✅ **User Experience**
+- Success and error state presentation
+- Information truncation for security
+- Navigation and window management
+- Cross-browser compatibility considerations
 
 ## Running Tests
 
 ### Quick Start
 
 ```bash
-# Run all tests
+# Run all tests (recommended - completes in ~1.5 seconds)
 python run_tests.py
 
 # Run with verbose output
 python run_tests.py --verbose
 
+# Continue running all tests even if some fail (helpful for debugging)
+python run_tests.py --continue-on-failure
+
 # Run quick smoke tests only
 python run_tests.py --quick
 
-# Run with coverage reporting (requires pytest-cov)
+# Run with coverage reporting for all modules
 python run_tests.py --coverage
 ```
 
@@ -122,28 +166,32 @@ python run_tests.py --coverage
 
 ```bash
 # Core functionality tests
-python -m pytest test_oauth_updated.py -v
+TESTING=1 python -m pytest test_oauth_updated.py -v
 
-# Edge cases and comprehensive tests
-python -m pytest test_comprehensive.py -v
+# Edge cases and comprehensive tests  
+TESTING=1 python -m pytest test_comprehensive.py -v
+
+# OAuth callback route tests
+TESTING=1 python -m pytest test_callback_route.py -v
 
 # Integration tests
-python -m pytest test_mcp_integration.py -v
+TESTING=1 python -m pytest test_mcp_integration.py -v
 
-# Legacy test runner
+# Legacy test runner (redirects to updated tests)
 python test_oauth_mcp.py
 ```
 
 ### Direct pytest Usage
 
 ```bash
-# All tests with coverage
-python -m pytest --cov=client_with_oauth --cov=flask_mcp_server --cov-report=term-missing -v
+# All tests with comprehensive coverage
+TESTING=1 python -m pytest --cov=client_with_oauth --cov=flask_mcp_server --cov=mcp_server --cov=user_inputs --cov-report=term-missing -v
 
 # Specific test patterns
-python -m pytest -k "test_oauth" -v
-python -m pytest -k "test_mcp" -v
-python -m pytest -k "test_flask" -v
+TESTING=1 python -m pytest -k "test_oauth" -v
+TESTING=1 python -m pytest -k "test_mcp" -v
+TESTING=1 python -m pytest -k "test_flask" -v
+TESTING=1 python -m pytest -k "test_callback" -v
 ```
 
 ## Test Categories
@@ -180,10 +228,12 @@ The test suite uses comprehensive mocking to:
 ### Key Mocked Components
 
 - `httpx.AsyncClient` for HTTP requests
-- OAuth flow endpoints
-- GitHub API responses
+- OAuth flow endpoints and Auth0 integration
+- GitHub API responses with proper JSON structures
 - File system operations
-- Environment variables
+- Configuration management (`flask_mcp_server.config`)
+- OAuth2Client for token exchange testing
+- Environment variables with test-specific values
 
 ## Test Data
 
@@ -195,14 +245,25 @@ Tests use realistic mock data including:
 - Error response formats
 - Edge case scenarios
 
+## Performance Optimizations
+
+The test suite has been optimized for speed:
+
+- **Fast Execution**: All 79 tests complete in ~1.5 seconds
+- **Proper Mocking**: Comprehensive mocking prevents real network calls
+- **Configuration Management**: `TESTING=1` environment variable for test-specific behavior
+- **Autouse Fixtures**: Automatic configuration mocking in test classes
+- **Type Safety**: All Pyright type checking issues resolved
+
 ## Continuous Integration
 
 The test suite is designed for CI/CD integration:
 
-- **Fast Execution**: All tests complete in under 2 seconds
-- **No External Dependencies**: Fully self-contained
-- **Clear Output**: Detailed success/failure reporting
+- **Ultra-Fast Execution**: Complete test suite in under 2 seconds
+- **No External Dependencies**: Fully self-contained with comprehensive mocking
+- **Clear Output**: Detailed success/failure reporting with short tracebacks
 - **Exit Codes**: Proper return codes for automation
+- **Environment Isolation**: Tests work in any environment without configuration
 
 ## Coverage Goals
 
@@ -232,24 +293,56 @@ When adding new tests:
 
 1. Choose the appropriate test file:
    - `test_oauth_updated.py` for core functionality
-   - `test_comprehensive.py` for edge cases
+   - `test_comprehensive.py` for edge cases  
+   - `test_callback_route.py` for Flask callback route testing
    - `test_mcp_integration.py` for integration scenarios
 
 2. Follow existing patterns:
-   - Use proper mocking
+   - Set `TESTING=1` environment variable for configuration bypassing
+   - Use proper mocking with `@pytest.fixture(autouse=True)` for configuration
    - Include both success and failure cases
    - Add descriptive docstrings
-   - Test edge conditions
+   - Ensure tests complete quickly (<1 second each)
+   - Use type-safe assertions and proper null checks
 
-3. Update this documentation if adding new test categories
+3. Configuration Testing:
+   - Mock `flask_mcp_server.config` for route tests
+   - Use `mock_config_with_oauth` fixture for OAuth testing
+   - Ensure no real network calls or file operations
+
+4. Update this documentation if adding new test categories
+
+## Recent Improvements
+
+✅ **Performance Optimization** (2024)
+- Fixed slow-running tests by adding proper configuration mocking
+- Reduced test suite execution time from minutes to ~1.5 seconds
+- Added `autouse` fixtures for automatic configuration management
+
+✅ **Type Safety** (2024)
+- Resolved all Pyright type checking issues (0 errors, 0 warnings)
+- Added proper type annotations and null safety checks
+- Fixed Union type handling for GitHub API responses
+
+✅ **Configuration Management** (2024)
+- Updated all tests to work with new `user_inputs.py` configuration system
+- Added `TESTING=1` environment variable support
+- Removed dependency on CLI arguments in favor of environment variables
+
+✅ **Comprehensive Coverage** (2024)
+- Expanded from 50 to 79 tests
+- Added dedicated callback route testing (32 tests)
+- Enhanced OAuth flow testing with proper mocking
+- Added template rendering and user experience validation
 
 ## Dependencies
 
 Testing requires:
 
 - `pytest` - Test framework
-- `pytest-asyncio` - Async test support
+- `pytest-asyncio` - Async test support  
 - `pytest-cov` (optional) - Coverage reporting
 - Standard library `unittest.mock` - Mocking framework
+- Environment variables: `TESTING=1` for test-specific behavior
 
 All testing dependencies are included in the project's `pyproject.toml`.

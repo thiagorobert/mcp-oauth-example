@@ -2,17 +2,17 @@
 """Test script for the merged Flask + MCP server application."""
 
 import json
+import os
 import subprocess
 import sys
-import time
 
 
 def test_mcp_server():
     """Test the MCP server functionality."""
     print("Testing MCP server...")
 
-    # Test MCP server with a fake GitHub token
-    cmd = [sys.executable, "flask_mcp_server.py", "--token", "fake_token"]
+    # Test MCP server with environment variables set
+    cmd = [sys.executable, "flask_mcp_server.py"]
 
     # MCP protocol messages
     messages = [
@@ -36,13 +36,26 @@ def test_mcp_server():
         }
     ]
 
+    # Set up environment with test credentials
+    test_env = os.environ.copy()
+    test_env.update({
+        'TESTING': '1',
+        'GITHUB_TOKEN': 'fake_token',
+        'APP_SECRET_KEY': 'test_secret',
+        'AUTH0_CLIENT_ID': 'test_client_id',
+        'AUTH0_CLIENT_SECRET': 'test_client_secret',
+        'AUTH0_DOMAIN': 'test.auth0.com'
+    })
+
+    process = None
     try:
         process = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
+            env=test_env
         )
 
         # Send messages
@@ -62,14 +75,18 @@ def test_mcp_server():
             print("STDERR:")
             print(f"  {stderr}")
 
-        assert process.returncode == 0, f"Process failed with return code {process.returncode}"
+        assert process.returncode == 0, f"Process failed with return code {
+            process.returncode}"
 
     except subprocess.TimeoutExpired:
-        process.kill()
+        if process:
+            process.kill()
         print("  Test timed out (this is expected behavior)")
         # This is expected behavior for MCP server, so pass
         assert True
     except Exception as e:
+        if process:
+            process.kill()
         print(f"  Error: {e}")
         assert False, f"Test failed with exception: {e}"
 
@@ -83,7 +100,8 @@ def test_help_flag():
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
-        assert result.returncode == 0, f"Help flag test failed with return code {result.returncode}"
+        assert result.returncode == 0, f"Help flag test failed with return code {
+            result.returncode}"
     except Exception as e:
         print(f"  Error: {e}")
         assert False, f"Help flag test failed with exception: {e}"
@@ -104,7 +122,7 @@ def main():
         try:
             test_func()  # Now using assertions instead of return values
             results.append((test_name, True))
-            print(f"  ✓ PASS\n")
+            print("  ✓ PASS\n")
         except AssertionError as e:
             print(f"  ✗ FAIL: {e}\n")
             results.append((test_name, False))
@@ -117,7 +135,9 @@ def main():
         print(f"  {test_name}: {'✓ PASS' if success else '✗ FAIL'}")
 
     all_passed = all(success for _, success in results)
-    print(f"\nOverall: {'✓ ALL TESTS PASSED' if all_passed else '✗ SOME TESTS FAILED'}")
+    print(
+        f"\nOverall: {
+            '✓ ALL TESTS PASSED' if all_passed else '✗ SOME TESTS FAILED'}")
 
     return 0 if all_passed else 1
 

@@ -224,10 +224,12 @@
             </div>
         {% endif %}
         
-        <div class="close-notice">
-            💡 <strong>Note:</strong> This window should close automatically after successful authentication. 
-            If it doesn't, you can safely close it manually.
-        </div>
+        {% if auto_close %}
+            <div class="close-notice">
+                💡 <strong>Note:</strong> This window should close automatically after successful authentication. 
+                If it doesn't, you can safely close it manually.
+            </div>
+        {% endif %}
     </div>
     
     <script>

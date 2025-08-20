@@ -13,36 +13,31 @@ import logging
 import threading
 import urllib.parse
 from datetime import datetime
-from os import environ as env
 from typing import Any
 from urllib.parse import quote_plus, urlencode
 
 import requests
 from authlib.integrations.flask_client import OAuth
-from dotenv import find_dotenv, load_dotenv
 from flask import Flask, redirect, render_template, request, session, url_for
 from waitress import serve
 
 # Import MCP server functionality
 from mcp_server import run_mcp_server, set_github_token
 
-# Load environment variables
-ENV_FILE = find_dotenv()
-if ENV_FILE:
-    load_dotenv(ENV_FILE)
+# Import configuration management
+from user_inputs import get_config
 
 # Set up module-specific logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-# Global variable to store GitHub access token for MCP server
-_github_access_token = None
+# Load configuration
+config = get_config()
 
 
 class OAuth2Client:
-    """OAuth2 client for Auth0 authentication - integrated from
-    oauth_dynamic_application_no_server.py"""
+    """OAuth2 client for Auth0 authentication."""
 
     def __init__(self, client_id: str, client_secret: str, auth0_domain: str,
                  redirect_uri: str):
@@ -87,11 +82,18 @@ class OAuth2Client:
         logger.debug("Exchanging authorization code for token...")
 
         try:
-            response = requests.post(self.token_url, data=token_data, headers=headers, timeout=30)
+            response = requests.post(
+                self.token_url,
+                data=token_data,
+                headers=headers,
+                timeout=30)
             response.raise_for_status()
 
             token_response = response.json()
-            logger.debug(f"Token response received: {list(token_response.keys())}")
+            logger.debug(
+                f"Token response received: {
+                    list(
+                        token_response.keys())}")
 
             return token_response
 
@@ -106,7 +108,8 @@ class OAuth2Client:
         }
 
         try:
-            response = requests.get(self.userinfo_url, headers=headers, timeout=30)
+            response = requests.get(
+                self.userinfo_url, headers=headers, timeout=30)
             response.raise_for_status()
 
             user_info = response.json()
@@ -121,19 +124,19 @@ class OAuth2Client:
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = env.get("APP_SECRET_KEY")
+app.secret_key = config.app_secret_key
 
 # Initialize OAuth
 oauth = OAuth(app)
 
 oauth.register(
     "auth0",
-    client_id=env.get("AUTH0_CLIENT_ID"),
-    client_secret=env.get("AUTH0_CLIENT_SECRET"),
+    client_id=config.auth0_client_id,
+    client_secret=config.auth0_client_secret,
     client_kwargs={
         "scope": "openid profile email",
     },
-    server_metadata_url=f'https://{env.get("AUTH0_DOMAIN")}/.well-known/openid-configuration',
+    server_metadata_url=f'https://{config.auth0_domain}/.well-known/openid-configuration',
 )
 
 # MCP server functionality is now in mcp_server.py
@@ -152,6 +155,8 @@ def home():
 
 @app.route("/callback", methods=["GET", "POST"])
 def callback():
+    if oauth.auth0 is None:
+        raise RuntimeError("Auth0 client not properly initialized")
     token = oauth.auth0.authorize_access_token()
     session["user"] = token
     return redirect("/")
@@ -159,6 +164,8 @@ def callback():
 
 @app.route("/login")
 def login():
+    if oauth.auth0 is None:
+        raise RuntimeError("Auth0 client not properly initialized")
     return oauth.auth0.authorize_redirect(
         redirect_uri=url_for("callback", _external=True)
     )
@@ -169,12 +176,12 @@ def logout():
     session.clear()
     return redirect(
         "https://"
-        + env.get("AUTH0_DOMAIN")
+        + config.auth0_domain
         + "/v2/logout?"
         + urlencode(
             {
                 "returnTo": url_for("home", _external=True),
-                "client_id": env.get("AUTH0_CLIENT_ID"),
+                "client_id": config.auth0_client_id,
             },
             quote_via=quote_plus,
         )
@@ -207,21 +214,25 @@ def dynamic_application_callback():
     token_info = None
     user_info = None
 
-    # If there's a code and Auth0 credentials are available, attempt token exchange
-    if (code and success and env.get("DYNAMIC_CLIENT_ID") and
-            env.get("DYNAMIC_CLIENT_SECRET") and env.get("AUTH0_DOMAIN")):
+    # If there's a code and Auth0 credentials are available, attempt token
+    # exchange
+    if (code and success and config.dynamic_client_id and
+            config.dynamic_client_secret and config.auth0_domain):
         try:
             # Create OAuth client with callback URL
-            redirect_uri = url_for("dynamic_application_callback", _external=True)
+            redirect_uri = url_for(
+                "dynamic_application_callback",
+                _external=True)
             oauth_client = OAuth2Client(
-                client_id=env.get("DYNAMIC_CLIENT_ID"),
-                client_secret=env.get("DYNAMIC_CLIENT_SECRET"),
-                auth0_domain=env.get("AUTH0_DOMAIN"),
+                client_id=config.dynamic_client_id,
+                client_secret=config.dynamic_client_secret,
+                auth0_domain=config.auth0_domain,
                 redirect_uri=redirect_uri
             )
 
             # Exchange code for token
-            logger.debug(f"Attempting token exchange with redirect_uri: {redirect_uri}")
+            logger.debug(
+                f"Attempting token exchange with redirect_uri: {redirect_uri}")
             token_response = oauth_client.exchange_code_for_token(code)
 
             if token_response:
@@ -236,7 +247,8 @@ def dynamic_application_callback():
 
                 # Get user info if we have an access token
                 if token_response.get('access_token'):
-                    user_response = oauth_client.get_user_info(token_response['access_token'])
+                    user_response = oauth_client.get_user_info(
+                        token_response['access_token'])
                     if user_response:
                         user_info = {
                             'name': user_response.get('name'),
@@ -245,12 +257,12 @@ def dynamic_application_callback():
                             'picture': user_response.get('picture'),
                             'nickname': user_response.get('nickname'),
                             'email_verified': user_response.get('email_verified'),
-                            'updated_at': user_response.get('updated_at')
-                        }
+                            'updated_at': user_response.get('updated_at')}
                     else:
                         logger.warning("Failed to retrieve user information")
                 else:
-                    logger.warning("No access token received from token exchange")
+                    logger.warning(
+                        "No access token received from token exchange")
             else:
                 logger.error("Token exchange failed")
                 error_message = "Failed to exchange authorization code for token"
@@ -263,7 +275,8 @@ def dynamic_application_callback():
 
     elif code and success:
         # Auth0 credentials not available, show placeholder info
-        logger.info("Auth0 credentials not configured, showing placeholder information")
+        logger.info(
+            "Auth0 credentials not configured, showing placeholder information")
         token_info = {
             'access_token': 'Auth0 credentials required for token exchange',
             'token_type': 'bearer',
@@ -315,46 +328,30 @@ def run_flask_server(port: int = 8080):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Flask web app with MCP server")
-    parser.add_argument("--token", help="GitHub OAuth access token (for MCP functionality)")
-    parser.add_argument("--port", type=int, default=8080, help="Flask server port (default: 8080)")
+    parser = argparse.ArgumentParser(
+        description="Flask web app with MCP server")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Flask server port (default: 8080)")
     args = parser.parse_args()
 
-    # Set GitHub token from argument or environment
-    if args.token:
-        _github_access_token = args.token
-    else:
-        _github_access_token = env.get("GITHUB_TOKEN") or env.get("GITHUB_PERSONAL_ACCESS_TOKEN")
+    # Set the GitHub token in the MCP server
+    set_github_token(config.github_token)
 
-    # Set the token in the MCP server
-    set_github_token(_github_access_token)
+    # Run both Flask and MCP server together
+    # MCP server runs in stdio mode, so Flask must run in a separate thread
+    flask_thread = threading.Thread(
+        target=run_flask_server, args=(
+            args.port,), daemon=True)
+    flask_thread.start()
 
-    # Always run in both mode - Flask web server and MCP server together
-    flask_vars = ["APP_SECRET_KEY", "AUTH0_CLIENT_ID", "AUTH0_CLIENT_SECRET", "AUTH0_DOMAIN"]
-    missing_flask_vars = [var for var in flask_vars if not env.get(var)]
+    print(f"Flask server starting on port {args.port}")
+    print("MCP server starting on stdio...")
+    print("Use Ctrl+C to stop both servers")
 
-    if missing_flask_vars:
-        print(f"Warning: Missing Flask environment variables: {', '.join(missing_flask_vars)}")
-        print("Flask web server will not start. Only MCP server will run.")
-        if not _github_access_token:
-            print("Error: GitHub token also required for MCP mode. Use --token or set "
-                  "GITHUB_TOKEN environment variable.")
-            exit(1)
+    try:
         run_mcp_server()
-    else:
-        if not _github_access_token:
-            print("Warning: No GitHub token available. MCP tools will not function properly.")
-
-        # Run both Flask and MCP server
-        # MCP server runs in stdio mode, so Flask must run in a separate thread
-        flask_thread = threading.Thread(target=run_flask_server, args=(args.port,), daemon=True)
-        flask_thread.start()
-
-        print(f"Flask server starting on port {args.port}")
-        print("MCP server starting on stdio...")
-        print("Use Ctrl+C to stop both servers")
-
-        try:
-            run_mcp_server()
-        except KeyboardInterrupt:
-            print("\nShutting down servers...")
+    except KeyboardInterrupt:
+        print("\nShutting down servers...")

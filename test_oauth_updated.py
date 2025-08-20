@@ -6,20 +6,17 @@ Tests both client_with_oauth.py and flask_mcp_server.py functionality with prope
 to avoid actual GitHub API calls and OAuth flows.
 """
 
-import asyncio
 import json
 import os
-import subprocess
 import tempfile
-import threading
-import time
 import unittest
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, Mock, mock_open, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 # Import modules under test
+from flask import redirect
+
 import client_with_oauth
 import flask_mcp_server
 import mcp_server
@@ -54,7 +51,9 @@ class TestClientOAuth(unittest.TestCase):
         importlib.reload(client_with_oauth)
 
         self.assertEqual(client_with_oauth.GITHUB_CLIENT_ID, 'test_client_id')
-        self.assertEqual(client_with_oauth.GITHUB_CLIENT_SECRET, 'test_client_secret')
+        self.assertEqual(
+            client_with_oauth.GITHUB_CLIENT_SECRET,
+            'test_client_secret')
 
     def test_save_and_load_token(self):
         """Test token persistence functionality."""
@@ -131,6 +130,7 @@ class TestClientOAuthAsync:
         with patch.dict(os.environ, {'GITHUB_CLIENT_ID': self.test_client_id}):
             result = await client_with_oauth.get_device_code()
 
+        assert result is not None
         assert result['device_code'] == self.test_device_code
         assert result['user_code'] == self.test_user_code
 
@@ -171,7 +171,8 @@ class TestClientOAuthAsync:
         success_response.json.return_value = {'access_token': self.test_token}
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.post.side_effect = [pending_response, success_response]
+        mock_client_instance.post.side_effect = [
+            pending_response, success_response]
         mock_client.return_value.__aenter__.return_value = mock_client_instance
 
         with patch.dict(os.environ, {'GITHUB_CLIENT_ID': self.test_client_id}):
@@ -185,8 +186,13 @@ class TestClientOAuthAsync:
     @patch('client_with_oauth.poll_for_token')
     @patch('client_with_oauth.get_device_code')
     @patch('builtins.print')
-    async def test_authenticate_with_oauth_flow(self, mock_print, mock_get_device_code,
-                                                mock_poll_for_token, mock_save_token, mock_load_token):
+    async def test_authenticate_with_oauth_flow(
+            self,
+            mock_print,
+            mock_get_device_code,
+            mock_poll_for_token,
+            mock_save_token,
+            mock_load_token):
         """Test authentication with OAuth device flow."""
         # Setup mocks
         mock_load_token.return_value = None  # No existing token
@@ -219,7 +225,8 @@ class TestClientOAuthAsync:
         assert client_with_oauth._access_token == self.test_token
 
     @patch('client_with_oauth.load_token')
-    async def test_authenticate_with_personal_access_token(self, mock_load_token):
+    async def test_authenticate_with_personal_access_token(
+            self, mock_load_token):
         """Test authentication with personal access token."""
         mock_load_token.return_value = None  # No existing token
 
@@ -281,6 +288,8 @@ class TestFlaskMCPServerAsync:
             self.test_token
         )
 
+        assert result is not None
+        assert isinstance(result, dict)
         assert result["login"] == "testuser"
         assert result["id"] == 12345
 
@@ -444,13 +453,19 @@ class TestFlaskRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Welcome Guest', response.data)
 
-    def test_login_route(self):
+    @patch.object(flask_mcp_server.oauth, 'auth0')
+    def test_login_route(self, mock_auth0):
         """Test login route redirects to Auth0."""
-        # Note: This will fail in test environment without proper Auth0 setup
-        # But we can test that the route exists
+        # Mock the OAuth client
+        mock_auth0.authorize_redirect.return_value = redirect(
+            'http://test.auth0.com/authorize')
+
         response = self.client.get('/login')
-        # Expect a redirect or error due to missing Auth0 config in test environment
-        self.assertIn(response.status_code, [302, 500])
+        # Should get a redirect to Auth0
+        self.assertEqual(response.status_code, 302)
+
+        # Verify the authorize_redirect was called
+        mock_auth0.authorize_redirect.assert_called_once()
 
 
 @pytest.mark.asyncio
