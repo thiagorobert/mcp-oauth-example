@@ -6,9 +6,14 @@ All required environment variables are validated on initialization with assertio
 
 import os
 from dataclasses import dataclass
+import logging
 from typing import Optional
 
 from dotenv import find_dotenv, load_dotenv
+
+import logging_config
+
+logger = logging_config.configure_logger(__name__)
 
 
 @dataclass
@@ -27,8 +32,6 @@ class AppConfig:
 
     # GitHub OAuth and MCP configuration
     github_token: str
-    github_client_id: Optional[str] = None
-    github_client_secret: Optional[str] = None
 
     # Dynamic OAuth callback configuration (optional)
     dynamic_client_id: Optional[str] = None
@@ -59,10 +62,14 @@ def load_config() -> AppConfig:
     Raises:
         AssertionError: If required environment variables are missing
     """
+        
     # Load environment variables from .env file if it exists
     env_file = find_dotenv()
     if env_file:
+        logger.debug(f"Using .env file {env_file}")
         load_dotenv(env_file)
+    else:
+        logger.warning(".env file not found")
 
     # Create configuration from environment variables
     config = AppConfig(
@@ -73,19 +80,11 @@ def load_config() -> AppConfig:
         auth0_domain=os.environ.get("AUTH0_DOMAIN", ""),
 
         # GitHub OAuth and MCP configuration
-        # Check both GITHUB_TOKEN and GITHUB_PERSONAL_ACCESS_TOKEN for
-        # backwards compatibility
-        github_token=(
-            os.environ.get("GITHUB_TOKEN") or
-            os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN") or
-            ""
-        ),
-        github_client_id=os.environ.get("GITHUB_CLIENT_ID"),
-        github_client_secret=os.environ.get("GITHUB_CLIENT_SECRET"),
+        github_token=os.environ.get("GITHUB_TOKEN", ""),
 
         # Dynamic OAuth callback configuration (optional)
-        dynamic_client_id=os.environ.get("DYNAMIC_CLIENT_ID"),
-        dynamic_client_secret=os.environ.get("DYNAMIC_CLIENT_SECRET"),
+        dynamic_client_id=os.environ.get("DYNAMIC_CLIENT_ID", ""),
+        dynamic_client_secret=os.environ.get("DYNAMIC_CLIENT_SECRET", ""),
     )
 
     return config
@@ -107,8 +106,6 @@ def create_test_config() -> AppConfig:
         auth0_client_secret="test_auth0_client_secret",
         auth0_domain="test.auth0.com",
         github_token="test_github_token",
-        github_client_id="test_github_client_id",
-        github_client_secret="test_github_client_secret",
         dynamic_client_id="test_dynamic_client_id",
         dynamic_client_secret="test_dynamic_client_secret"
     )

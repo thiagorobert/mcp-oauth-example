@@ -9,33 +9,9 @@ from typing import Any
 import dotenv
 import httpx
 
-# Set up module-specific logger with DEBUG level
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+import logging_config
 
-# Logger handler will be configured based on verbose flag
-_verbose_mode = False
-
-
-def setup_logging(verbose: bool = False):
-    """Configure logging based on verbose flag."""
-    global _verbose_mode
-    _verbose_mode = verbose
-
-    # Remove existing handlers
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
-
-    if verbose:
-        # Create handler for stdout output when verbose mode is enabled
-        handler = logging.StreamHandler()
-        handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(
-            '%(filename)s:%(lineno)d - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-
-
+logger = logging_config.configure_logger("client_with_oauth", verbose=True)
 dotenv.load_dotenv()  # load environment variables from .env
 
 # Constants
@@ -216,14 +192,6 @@ async def authenticate() -> str | None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="GitHub OAuth client example")
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        help="Enable verbose logging to stdout")
-    args = parser.parse_args()
-
-    # Configure logging based on verbose flag
-    setup_logging(args.verbose)
-
     # These are required for OAuth2
     assert GITHUB_CLIENT_ID, "required GITHUB_CLIENT_ID not available"
     assert GITHUB_CLIENT_SECRET, "required GITHUB_CLIENT_SECRET not available"

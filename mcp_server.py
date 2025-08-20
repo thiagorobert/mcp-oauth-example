@@ -10,9 +10,10 @@ from typing import Any, Dict, List, Optional, Union
 import httpx
 from mcp.server.fastmcp import FastMCP
 
+import logging_config
+
 # Set up module-specific logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = logging_config.configure_logger(__name__, verbose=True)
 
 # Constants for GitHub API
 GITHUB_API_BASE = "https://api.github.com"
@@ -154,10 +155,6 @@ Profile URL: {data.get('html_url', 'Unknown')}
 
 def run_mcp_server():
     """Run the MCP server in stdio mode."""
+    # Ensure logger is configured when MCP server starts
     logger.debug("Starting MCP server...")
     mcp.run(transport='stdio')
-
-
-def get_mcp_instance():
-    """Get the MCP server instance for integration with other applications."""
-    return mcp

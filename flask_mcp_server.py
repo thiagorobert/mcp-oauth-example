@@ -21,16 +21,14 @@ from authlib.integrations.flask_client import OAuth
 from flask import Flask, redirect, render_template, request, session, url_for
 from waitress import serve
 
-# Import MCP server functionality
 from mcp_server import run_mcp_server, set_github_token
 
-# Import configuration management
 from user_inputs import get_config
 
-# Set up module-specific logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+import logging_config
 
+# Set up module-specific logger
+logger = logging_config.configure_logger("flask_mcp_server")
 
 # Load configuration
 config = get_config()
