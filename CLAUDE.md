@@ -8,11 +8,12 @@ This is an MCP (Model Context Protocol) server that demonstrates OAuth authentic
 
 ## Architecture
 
-The codebase consists of four main modules:
+The codebase consists of five main modules:
 
 - **OAuth Client (`client_with_oauth.py`)**: Standalone GitHub OAuth authentication client for obtaining and storing GitHub tokens
 - **Flask Web Server (`flask_mcp_server.py`)**: Flask web application with Auth0 OAuth authentication and OAuth callback demonstration
 - **MCP Server (`mcp_server.py`)**: Standalone MCP server with GitHub API tools that can be integrated with the Flask app or used independently
+- **Token Decoder (`decode.py`)**: Comprehensive JWT/JWE token analysis and decoding utility for OAuth debugging
 - **Configuration Management (`user_inputs.py`)**: Centralized environment variable handling with dataclass-based configuration
 
 ## Key Components
@@ -45,6 +46,18 @@ The codebase consists of four main modules:
 - `get_repository_info(owner, repo)`: Gets detailed info for a specific repository
 - `get_user_info()`: Retrieves authenticated user's profile information
 - `make_github_request(url, token)`: Low-level function for GitHub API requests with proper type handling
+
+### Token Decoder (`decode.py`)
+- **JWT/JWE Token Decoder**: Comprehensive token analysis utility for OAuth debugging and development
+- **Base64URL Decoding**: Safe base64url decoding with automatic padding correction
+- **JWT Support**: Decodes JSON Web Tokens including header, payload, and signature components
+- **JWE Support**: Decodes JSON Web Encryption tokens with configurable secret key support
+- **Token Analysis**: Automatic token type detection (JWT vs JWE) with fallback strategies
+- **Timestamp Formatting**: Human-readable timestamp conversion for standard JWT claims (exp, iat, nbf)
+- **CLI Interface**: Command-line tool supporting both direct token input and file processing
+- **File Processing**: JSON response parsing for access_token and id_token fields
+- **Web Integration**: Flask route at `/decode` for browser-based token decoding with template rendering
+- **Error Handling**: Comprehensive error reporting with helpful guidance for common issues
 
 ### Configuration Management (`user_inputs.py`)
 - **AppConfig dataclass**: Centralized configuration management with type safety
@@ -82,6 +95,21 @@ Optional environment variables:
 python client_with_oauth.py
 ```
 
+### Token Decoder (JWT/JWE Analysis)
+```bash
+# Decode a JWT or JWE token directly
+python decode.py "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+# Decode tokens from a JSON response file  
+python decode.py -f oauth_response.json
+
+# Decode tokens from a plain text file
+python decode.py -f token.txt
+
+# Web-based decoding (via Flask app)
+# Visit http://localhost:8080/decode?token=YOUR_TOKEN&type=access
+```
+
 ### Flask Web Server with Integrated MCP
 ```bash
 # Set required environment variables
@@ -107,6 +135,7 @@ The Flask application provides several routes:
 - `/callback`: Auth0 OAuth callback handler
 - `/logout`: Auth0 logout and session cleanup
 - `/dynamic_application_callback`: OAuth callback demonstration page with comprehensive information display
+- `/decode`: JWT/JWE token decoder with web interface for token analysis
 
 #### OAuth Callback Demonstration (`/dynamic_application_callback`)
 This route demonstrates OAuth callback handling for rfc7591 dynamic clients
@@ -114,8 +143,17 @@ This route demonstrates OAuth callback handling for rfc7591 dynamic clients
 - **Parameters**: Accepts `code`, `state`, `error`, `error_description`, and `scope` query parameters
 - **Template-Based**: Uses `templates/callback.html` for structured information display
 - **Information Display**: Shows callback details, token structure, and user information placeholders
+- **Token Decoding**: Integrated decode buttons for Authorization Code, Access Token, and ID Token fields
 - **Error Handling**: Comprehensive error state display with detailed messages
 - **Security Features**: State parameter validation and truncation of sensitive values for display
+
+#### Token Decoder Route (`/decode`)
+This route provides web-based JWT/JWE token analysis capabilities:
+- **Query Parameters**: `token` (required) and `type` (optional, for display purposes)
+- **Token Support**: Handles both JWT and JWE tokens with automatic type detection
+- **Secret Key Integration**: Uses Flask app's APP_SECRET_KEY and AUTH0_CLIENT_SECRET for JWE decoding
+- **Error Handling**: Comprehensive error reporting with helpful guidance for decoding failures
+- **Security**: Opens in new tab/window to prevent session interference
 
 ## Integration Workflow
 
@@ -182,9 +220,10 @@ Current files:
 - ✅ `client_with_oauth.py`: Standalone GitHub OAuth authentication client with file logging support
 - ✅ `flask_mcp_server.py`: Flask web application with Auth0 OAuth and callback demonstration 
 - ✅ `mcp_server.py`: Standalone MCP server with GitHub API tools
+- ✅ `decode.py`: Comprehensive JWT/JWE token decoder with CLI and web interface support
 - ✅ `user_inputs.py`: Centralized configuration management with dataclass validation
 - ✅ `logging_config.py`: Centralized logging configuration with file and console output support
-- ✅ `templates/callback.html`: OAuth callback page template with comprehensive information display
+- ✅ `templates/callback.html`: OAuth callback page template with integrated token decode buttons
 - ✅ `CLAUDE.md`: This documentation file
 - ✅ `.gitignore`: Updated to exclude removed files
 

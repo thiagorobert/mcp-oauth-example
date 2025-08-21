@@ -4,15 +4,27 @@ This document describes the comprehensive testing suite for the MCP OAuth GitHub
 
 ## Test Overview
 
-The project includes a robust testing suite with **79 comprehensive tests** covering:
+The project includes a robust testing suite with **128 comprehensive tests** covering:
 
 - OAuth authentication workflows
 - GitHub API interactions 
 - MCP server functionality
 - Flask web application features
+- JWT/JWE token decoding and analysis
 - Error handling and edge cases
 - Integration scenarios
 - Performance and stress testing
+
+## Test Coverage Statistics
+
+The current test suite achieves excellent coverage across all modules:
+
+- **Overall Project Coverage**: 92%
+- **decode.py**: 91% coverage (49 tests)
+- **client_with_oauth.py**: High coverage with OAuth flow testing
+- **flask_mcp_server.py**: Comprehensive Flask and MCP functionality coverage
+- **mcp_server.py**: Full MCP protocol and GitHub API coverage
+- **user_inputs.py**: Complete configuration management coverage
 
 ## Test Files
 
@@ -46,6 +58,14 @@ The project includes a robust testing suite with **79 comprehensive tests** cove
    - End-to-end MCP server functionality
    - Environment-based configuration testing
    - JSON-RPC protocol testing
+
+5. **`test_decode.py`** (49 tests)
+   - Comprehensive JWT/JWE token decoding functionality
+   - Base64URL encoding/decoding with padding handling
+   - Token validation and timestamp formatting
+   - CLI interface and file processing
+   - Error handling for malformed tokens and cryptographic failures
+   - Mock-based testing for external dependencies
 
 ## Test Coverage
 
@@ -82,6 +102,35 @@ The project includes a robust testing suite with **79 comprehensive tests** cove
 - Full Pyright type checking compliance (0 errors, 0 warnings)
 - Proper Optional typing for optional configuration
 - Runtime type validation and assertions
+
+### Token Decoder (`decode.py`)
+
+✅ **JWT/JWE Token Processing**
+- Base64URL decoding with automatic padding correction
+- JWT header, payload, and signature extraction
+- JWE decryption with multiple secret key support
+- Token type detection and validation
+
+✅ **Error Handling and Edge Cases**
+- Invalid base64 encoding scenarios
+- Malformed JSON in token components
+- Cryptography library availability checking
+- Unsupported encryption algorithms
+- Token format validation (part count, structure)
+
+✅ **CLI Interface and File Processing**
+- Command-line argument parsing and validation
+- JSON response file processing
+- Plain text token file handling
+- Environment variable integration for secret keys
+- Error reporting and user guidance
+
+✅ **Display and Formatting**
+- Token information display with syntax highlighting
+- Timestamp formatting for JWT claims (exp, iat, nbf)
+- Token validity status determination
+- Comprehensive error message presentation
+- Template integration for web interface
 
 ### Flask + MCP Server (`flask_mcp_server.py`)
 
@@ -160,6 +209,9 @@ TESTING=1 python -m pytest test_callback_route.py -v
 # Integration tests
 TESTING=1 python -m pytest test_mcp_integration.py -v
 
+# Token decoding tests
+TESTING=1 python -m pytest test_decode.py -v
+
 # Legacy test runner (redirects to updated tests)
 python test_oauth_mcp.py
 ```
@@ -168,13 +220,14 @@ python test_oauth_mcp.py
 
 ```bash
 # All tests with comprehensive coverage
-TESTING=1 python -m pytest --cov=client_with_oauth --cov=flask_mcp_server --cov=mcp_server --cov=user_inputs --cov-report=term-missing -v
+TESTING=1 python -m pytest --cov=client_with_oauth --cov=flask_mcp_server --cov=mcp_server --cov=user_inputs --cov=decode --cov-report=term-missing -v
 
 # Specific test patterns
 TESTING=1 python -m pytest -k "test_oauth" -v
 TESTING=1 python -m pytest -k "test_mcp" -v
 TESTING=1 python -m pytest -k "test_flask" -v
 TESTING=1 python -m pytest -k "test_callback" -v
+TESTING=1 python -m pytest -k "test_decode" -v
 ```
 
 ## Test Categories
@@ -217,6 +270,8 @@ The test suite uses comprehensive mocking to:
 - Configuration management (`flask_mcp_server.config`)
 - OAuth2Client for token exchange testing
 - Environment variables with test-specific values
+- Cryptography functions for JWE decoding testing
+- System exit calls and command-line argument parsing
 
 ## Test Data
 
@@ -225,6 +280,8 @@ Tests use realistic mock data including:
 - GitHub repository information
 - User profile data
 - OAuth token responses
+- JWT and JWE token structures
+- Base64URL encoded token components
 - Error response formats
 - Edge case scenarios
 
@@ -232,7 +289,7 @@ Tests use realistic mock data including:
 
 The test suite has been optimized for speed:
 
-- **Fast Execution**: All 79 tests complete in ~1.5 seconds
+- **Fast Execution**: All 128 tests complete in ~2 seconds
 - **Proper Mocking**: Comprehensive mocking prevents real network calls
 - **Configuration Management**: `TESTING=1` environment variable for test-specific behavior
 - **Autouse Fixtures**: Automatic configuration mocking in test classes
@@ -242,7 +299,7 @@ The test suite has been optimized for speed:
 
 The test suite is designed for CI/CD integration:
 
-- **Ultra-Fast Execution**: Complete test suite in under 2 seconds
+- **Ultra-Fast Execution**: Complete test suite in under 3 seconds
 - **No External Dependencies**: Fully self-contained with comprehensive mocking
 - **Clear Output**: Detailed success/failure reporting with short tracebacks
 - **Exit Codes**: Proper return codes for automation
@@ -279,6 +336,7 @@ When adding new tests:
    - `test_comprehensive.py` for edge cases  
    - `test_callback_route.py` for Flask callback route testing
    - `test_mcp_integration.py` for integration scenarios
+   - `test_decode.py` for JWT/JWE token decoding functionality
 
 2. Follow existing patterns:
    - Set `TESTING=1` environment variable for configuration bypassing
@@ -313,8 +371,9 @@ When adding new tests:
 - Removed dependency on CLI arguments in favor of environment variables
 
 ✅ **Comprehensive Coverage** (2024)
-- Expanded from 50 to 79 tests
+- Expanded from 50 to 128 tests
 - Added dedicated callback route testing (32 tests)
+- Added comprehensive token decoding testing (49 tests)
 - Enhanced OAuth flow testing with proper mocking
 - Added template rendering and user experience validation
 
