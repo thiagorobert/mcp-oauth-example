@@ -47,17 +47,6 @@ The project includes a robust testing suite with **79 comprehensive tests** cove
    - Environment-based configuration testing
    - JSON-RPC protocol testing
 
-### Legacy and Helper Files
-
-4. **`test_oauth_mcp.py`** (deprecated)
-   - Legacy test file that redirects to updated tests
-   - Maintains backward compatibility
-
-5. **`run_tests.py`**
-   - Comprehensive test runner script
-   - Supports coverage reporting
-   - Quick smoke test functionality
-
 ## Test Coverage
 
 ### OAuth Client (`client_with_oauth.py`)
@@ -147,19 +136,13 @@ The project includes a robust testing suite with **79 comprehensive tests** cove
 
 ```bash
 # Run all tests (recommended - completes in ~1.5 seconds)
-python run_tests.py
+python -m pytest
 
 # Run with verbose output
-python run_tests.py --verbose
-
-# Continue running all tests even if some fail (helpful for debugging)
-python run_tests.py --continue-on-failure
-
-# Run quick smoke tests only
-python run_tests.py --quick
+python -m pytest --verbose
 
 # Run with coverage reporting for all modules
-python run_tests.py --coverage
+python -m pytest --cov
 ```
 
 ### Individual Test Suites

@@ -1,12 +1,13 @@
 """Configuration management for Flask MCP server application.
 
-This module handles environment variable loading and validation using a dataclass structure.
-All required environment variables are validated on initialization with assertions.
+This module handles environment variable loading and validation using a 
+dataclass structure.
+All required environment variables are validated on initialization 
+with assertions.
 """
 
 import os
 from dataclasses import dataclass
-import logging
 from typing import Optional
 
 from dotenv import find_dotenv, load_dotenv
@@ -44,13 +45,18 @@ class AppConfig:
             return
 
         # Assert all required Flask variables are set
-        assert self.app_secret_key, "APP_SECRET_KEY environment variable is required"
-        assert self.auth0_client_id, "AUTH0_CLIENT_ID environment variable is required"
-        assert self.auth0_client_secret, "AUTH0_CLIENT_SECRET environment variable is required"
-        assert self.auth0_domain, "AUTH0_DOMAIN environment variable is required"
+        assert self.app_secret_key, \
+            "APP_SECRET_KEY environment variable is required"
+        assert self.auth0_client_id, \
+            "AUTH0_CLIENT_ID environment variable is required"
+        assert self.auth0_client_secret, \
+            "AUTH0_CLIENT_SECRET environment variable is required"
+        assert self.auth0_domain, \
+            "AUTH0_DOMAIN environment variable is required"
 
         # Assert GitHub token is set
-        assert self.github_token, "GITHUB_TOKEN environment variable is required"
+        assert self.github_token, \
+            "GITHUB_TOKEN environment variable is required"
 
 
 def load_config() -> AppConfig:
@@ -62,7 +68,7 @@ def load_config() -> AppConfig:
     Raises:
         AssertionError: If required environment variables are missing
     """
-        
+
     # Load environment variables from .env file if it exists
     env_file = find_dotenv()
     if env_file:

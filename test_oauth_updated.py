@@ -13,7 +13,6 @@ import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-
 # Import modules under test
 from flask import redirect
 

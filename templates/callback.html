@@ -94,6 +94,25 @@
             font-size: 0.9rem;
             color: #856404;
         }
+        .token-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-small {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+            border-radius: 3px;
+            text-decoration: none;
+            background-color: #17a2b8;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-small:hover {
+            background-color: #138496;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -110,7 +129,11 @@
                     <div class="info-grid">
                         {% if callback_info.code %}
                             <div class="info-label">Authorization Code:</div>
-                            <div class="info-value">{{ callback_info.code[:20] }}...{{ callback_info.code[-10:] }}</div>
+                            <div class="token-row">
+                                <div class="info-value">{{ callback_info.code[:20] }}...{{ callback_info.code[-10:] }}</div>
+                                <a href="/decode?token={{ callback_info.code | urlencode }}&type=authorization" 
+                                   class="btn-small" target="_blank" rel="noopener noreferrer">Decode</a>
+                            </div>
                         {% endif %}
                         
                         {% if callback_info.state %}
@@ -137,7 +160,11 @@
                     <div class="info-grid">
                         {% if token_info.access_token %}
                             <div class="info-label">Access Token:</div>
-                            <div class="info-value">{{ token_info.access_token[:30] }}...</div>
+                            <div class="token-row">
+                                <div class="info-value">{{ token_info.access_token[:30] }}...</div>
+                                <a href="/decode?token={{ token_info.access_token | urlencode }}&type=access" 
+                                   class="btn-small" target="_blank" rel="noopener noreferrer">Decode</a>
+                            </div>
                         {% endif %}
                         
                         {% if token_info.token_type %}
@@ -152,7 +179,11 @@
                         
                         {% if token_info.id_token %}
                             <div class="info-label">ID Token:</div>
-                            <div class="info-value">{{ token_info.id_token[:30] }}...</div>
+                            <div class="token-row">
+                                <div class="info-value">{{ token_info.id_token[:30] }}...</div>
+                                <a href="/decode?token={{ token_info.id_token | urlencode }}&type=id" 
+                                   class="btn-small" target="_blank" rel="noopener noreferrer">Decode</a>
+                            </div>
                         {% endif %}
                     </div>
                 </div>

@@ -4,7 +4,6 @@ This module contains the MCP (Model Context Protocol) server functionality
 that was extracted from flask_mcp_server.py for better separation of concerns.
 """
 
-import logging
 from typing import Any, Dict, List, Optional, Union
 
 import httpx
@@ -31,7 +30,8 @@ def set_github_token(token: Optional[str]):
     global _github_access_token
     _github_access_token = token
     logger.debug(
-        f"GitHub token set for MCP server: {'***' + token[-4:] if token else 'None'}")
+        f"GitHub token set for MCP server: "
+        f"{'***' + token[-4:] if token else 'None'}")
 
 
 def get_github_token() -> Optional[str]:
@@ -67,8 +67,8 @@ async def list_repositories() -> str:
 
     if not _github_access_token:
         return (
-            "No GitHub authentication token available. Please set GITHUB_TOKEN "
-            "environment variable or use --token argument.")
+            "No GitHub authentication token available. "
+            "Please set GITHUB_TOKEN environment variable or use --token argument.")
 
     url = f"{GITHUB_API_BASE}/user/repos"
     data = await make_github_request(url, _github_access_token)

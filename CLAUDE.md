@@ -237,59 +237,9 @@ Before using the MCP configuration, obtain a token via one of these methods:
 
 ## Testing
 
-The project includes a comprehensive testing suite with 79 tests covering all functionality.
-
-### Quick Test Commands
-
-```bash
-# Run all tests (recommended)
-python run_tests.py
-
-# Run with verbose output
-python run_tests.py --verbose
-
-# Continue running all tests even if some fail
-python run_tests.py --continue-on-failure
-
-# Quick smoke tests only
-python run_tests.py --quick
-
-# Run with coverage reporting
-python run_tests.py --coverage
-```
-
-### Individual Test Suites
-
-```bash
-# Core functionality tests
-python -m pytest test_oauth_updated.py -v
-
-# Edge cases and comprehensive tests  
-python -m pytest test_comprehensive.py -v
-
-# OAuth callback route tests
-python -m pytest test_callback_route.py -v
-
-# Integration tests
-python -m pytest test_mcp_integration.py -v
-
-# Legacy test runner (redirects to updated tests)
-python test_oauth_mcp.py
-```
-
-### Test Coverage
-
-The test suite covers:
-- ✅ OAuth authentication workflows (GitHub and Auth0)
-- ✅ GitHub API tool functionality
-- ✅ Flask web application features
-- ✅ OAuth callback handling and template rendering
-- ✅ MCP server protocol compliance
-- ✅ Error handling and edge cases
-- ✅ CLI interface and configuration
-- ✅ Integration and performance scenarios
-- ✅ Template rendering and user interface components
-
-All tests use comprehensive mocking to avoid external dependencies and ensure fast, reliable execution.
+The project includes a comprehensive testing suite with 128+ tests covering all functionality.
 
 For detailed testing information, see `TESTING.md`.
+
+## Directives
+* always perform linting after you changes

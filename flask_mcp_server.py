@@ -9,23 +9,23 @@ The MCP server logic is implemented in mcp_server.py for better separation of co
 
 import argparse
 import json
-import logging
 import threading
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote_plus, urlencode
 
 import requests
 from authlib.integrations.flask_client import OAuth
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import (Flask, redirect, render_template, render_template_string,
+                   request, session, url_for)
 from waitress import serve
 
-from mcp_server import run_mcp_server, set_github_token
-
-from user_inputs import get_config
-
 import logging_config
+# Import token decoding functionality
+from decode import decode_token, format_timestamp
+from mcp_server import run_mcp_server, set_github_token
+from user_inputs import get_config
 
 # Set up module-specific logger
 logger = logging_config.configure_logger("flask_mcp_server")
@@ -299,6 +299,297 @@ def dynamic_application_callback():
         auto_close=False,
         auto_close_delay=3000
     )
+
+
+@app.route("/decode")
+def decode():
+    """Decode JWT/JWE tokens and display formatted information."""
+    token = request.args.get('token')
+    token_type = request.args.get('type', 'unknown')
+
+    if not token:
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Token Decoder - Error</title>
+            <style>
+                body { 
+                    font-family: Arial, sans-serif; 
+                    max-width: 800px; 
+                    margin: 2rem auto; 
+                    padding: 2rem; 
+                }
+                .error { 
+                    color: #dc3545; 
+                    border: 2px solid #dc3545; 
+                    background-color: #f8d7da; 
+                    padding: 1rem; 
+                    border-radius: 4px; 
+                }
+            </style>
+        </head>
+        <body>
+            <div class="error">
+                <h2>❌ Missing Token</h2>
+                <p>No token provided for decoding. 
+                   Please provide a token parameter.</p>
+            </div>
+        </body>
+        </html>
+        """)
+
+    try:
+        # Get secret keys from config for JWE decoding
+        secret_keys = {}
+        if config.app_secret_key:
+            secret_keys['APP_SECRET_KEY'] = config.app_secret_key
+        if config.auth0_client_secret:
+            secret_keys['AUTH0_CLIENT_SECRET'] = config.auth0_client_secret
+
+        # Decode the token
+        (header, payload, signature), decoded_type = decode_token(token, secret_keys)
+
+        # Format payload with descriptions
+        claim_descriptions = {
+            'iss': 'Issuer',
+            'sub': 'Subject',
+            'aud': 'Audience',
+            'exp': 'Expiration Time',
+            'nbf': 'Not Before',
+            'iat': 'Issued At',
+            'jti': 'JWT ID',
+            'name': 'Full Name',
+            'nickname': 'Nickname',
+            'email': 'Email',
+            'picture': 'Profile Picture',
+            'updated_at': 'Last Updated',
+            'sid': 'Session ID',
+            'nonce': 'Nonce'
+        }
+
+        formatted_payload = {}
+        for key, value in payload.items():
+            description = claim_descriptions.get(key, key.title())
+
+            # Format timestamps
+            if key in [
+                    'exp', 'nbf', 'iat'] and isinstance(
+                    value, (int, float)):
+                formatted_value = f"{value} ({format_timestamp(value)})"
+            else:
+                formatted_value = value
+
+            formatted_payload[f"{description} ({key})"] = formatted_value
+
+        # Check token validity
+        current_time = datetime.now(timezone.utc).timestamp()
+        validity_info = {}
+
+        if 'iat' in payload:
+            validity_info['issued_at'] = format_timestamp(payload['iat'])
+
+        if 'exp' in payload:
+            exp_time = payload['exp']
+            validity_info['expires_at'] = format_timestamp(exp_time)
+
+            if current_time > exp_time:
+                validity_info['status'] = 'EXPIRED'
+                validity_info['status_class'] = 'expired'
+            else:
+                time_left = exp_time - current_time
+                hours_left = int(time_left // 3600)
+                minutes_left = int((time_left % 3600) // 60)
+                validity_info['status'] = f'VALID (expires in {hours_left}h {minutes_left}m)'
+                validity_info['status_class'] = 'valid'
+
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Token Decoder - {{ decoded_type }}</title>
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                    max-width: 1000px;
+                    margin: 2rem auto;
+                    padding: 2rem;
+                    background-color: #f8f9fa;
+                    color: #333;
+                }
+                .container {
+                    background: white;
+                    border-radius: 8px;
+                    padding: 2rem;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                .section {
+                    margin: 1.5rem 0;
+                    padding: 1rem;
+                    background-color: #f8f9fa;
+                    border-radius: 4px;
+                    border-left: 4px solid #007bff;
+                }
+                .json-content {
+                    background-color: #2d3748;
+                    color: #e2e8f0;
+                    padding: 1rem;
+                    border-radius: 4px;
+                    font-family: 'Monaco', 'Consolas', monospace;
+                    font-size: 0.9rem;
+                    overflow-x: auto;
+                    white-space: pre-wrap;
+                }
+                .validity {
+                    padding: 0.75rem;
+                    border-radius: 4px;
+                    margin-top: 1rem;
+                }
+                .valid {
+                    background-color: #d4edda;
+                    color: #155724;
+                    border: 1px solid #c3e6cb;
+                }
+                .expired {
+                    background-color: #f8d7da;
+                    color: #721c24;
+                    border: 1px solid #f5c6cb;
+                }
+                .info-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 2fr;
+                    gap: 0.5rem;
+                    margin-top: 1rem;
+                }
+                .info-label {
+                    font-weight: bold;
+                    color: #495057;
+                }
+                .info-value {
+                    font-family: 'Monaco', 'Consolas', monospace;
+                    background-color: #e9ecef;
+                    padding: 0.25rem 0.5rem;
+                    border-radius: 3px;
+                    font-size: 0.9rem;
+                }
+                .btn {
+                    display: inline-block;
+                    padding: 0.5rem 1rem;
+                    margin-top: 1rem;
+                    background-color: #6c757d;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 4px;
+                }
+                .btn:hover {
+                    background-color: #5a6268;
+                    color: white;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🔐 {{ decoded_type }} Token Decoder</h1>
+                <p><strong>Token Type:</strong> {{ token_type.title() }} Token</p>
+
+                <div class="section">
+                    <h3>📋 Header</h3>
+                    <div class="json-content">{{ header | tojson(indent=2) }}</div>
+                </div>
+
+                <div class="section">
+                    <h3>📦 Payload</h3>
+                    <div class="json-content">{{ formatted_payload | tojson(indent=2) }}</div>
+                </div>
+
+                {% if validity_info %}
+                <div class="section">
+                    <h3>⏰ Token Validity</h3>
+                    <div class="info-grid">
+                        {% if validity_info.issued_at %}
+                        <div class="info-label">Issued:</div>
+                        <div class="info-value">{{ validity_info.issued_at }}</div>
+                        {% endif %}
+
+                        {% if validity_info.expires_at %}
+                        <div class="info-label">Expires:</div>
+                        <div class="info-value">{{ validity_info.expires_at }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if validity_info.status %}
+                    <div class="validity {{ validity_info.status_class }}">
+                        <strong>Status:</strong> {{ validity_info.status }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if signature %}
+                <div class="section">
+                    <h3>🔐 Signature</h3>
+                    <div class="info-grid">
+                        <div class="info-label">Base64URL:</div>
+                        <div class="info-value">{{ signature[:50] }}...</div>
+                        <div class="info-label">Length:</div>
+                        <div class="info-value">{{ signature|length }} characters</div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="section">
+                    <h3>🔐 Encryption</h3>
+                    <p>This token was encrypted (JWE) and has been successfully decrypted.</p>
+                </div>
+                {% endif %}
+
+                <a href="javascript:window.close()" class="btn">Close Window</a>
+            </div>
+        </body>
+        </html>
+        """,
+                                      decoded_type=decoded_type,
+                                      token_type=token_type,
+                                      header=header,
+                                      formatted_payload=formatted_payload,
+                                      signature=signature,
+                                      validity_info=validity_info
+                                      )
+
+    except ValueError as e:
+        logger.error(f"Token decoding error: {e}")
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Token Decoder - Error</title>
+            <style>
+                body { 
+                    font-family: Arial, sans-serif; 
+                    max-width: 800px; 
+                    margin: 2rem auto; 
+                    padding: 2rem; 
+                }
+                .error { 
+                    color: #dc3545; 
+                    border: 2px solid #dc3545; 
+                    background-color: #f8d7da; 
+                    padding: 1rem; 
+                    border-radius: 4px; 
+                }
+                .btn { display: inline-block; padding: 0.5rem 1rem; margin-top: 1rem; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px; }
+            </style>
+        </head>
+        <body>
+            <div class="error">
+                <h2>❌ Token Decoding Failed</h2>
+                <p>Unable to decode the provided token: {{ error }}</p>
+                <p>The token may be malformed, encrypted with an unknown key, or not a valid JWT/JWE token.</p>
+            </div>
+            <a href="javascript:window.close()" class="btn">Close Window</a>
+        </body>
+        </html>
+        """, error=str(e))
+
 
 # MCP server run function is now imported from mcp_server.py
 
