@@ -9,6 +9,7 @@ The MCP server logic is implemented in mcp_server.py for better separation of co
 
 import argparse
 import json
+import os
 import threading
 from datetime import datetime, timezone
 from typing import Any
@@ -385,26 +386,51 @@ def decode():
 # MCP server run function is now imported from mcp_server.py
 
 
-def run_flask_server(port: int = 8080):
-    """Run the Flask web server using Waitress (production WSGI server)."""
-    logger.debug(f"Starting Flask server with Waitress on port {port}...")
-
-    # Use Waitress as the production WSGI server
-    # Waitress is thread-safe and works well in background threads
-    serve(
-        app,
-        host='0.0.0.0',
-        port=port,
-        threads=4,  # Number of threads to handle requests
-        connection_limit=100,  # Maximum number of connections
-        cleanup_interval=30,  # Cleanup interval in seconds
-        channel_timeout=120,  # Channel timeout in seconds
-        log_socket_errors=True,  # Log socket errors
-        max_request_header_size=262144,  # 256KB max header size
-        max_request_body_size=1073741824,  # 1GB max body size
-        expose_tracebacks=False,  # Don't expose tracebacks in production
-        ident='waitress-flask-mcp-server'  # Server identification
-    )
+def run_flask_server(port: int = 8080, https: bool = False):
+    """Run the Flask web server using Waitress for HTTP or Flask dev server for HTTPS."""
+    if https:
+        # Check for SSL certificates
+        cert_file = os.path.join(os.path.dirname(__file__), 'tls_data', 'server.crt')
+        key_file = os.path.join(os.path.dirname(__file__), 'tls_data', 'server.key')
+        
+        if not os.path.exists(cert_file) or not os.path.exists(key_file):
+            logger.error(f"SSL certificates not found: {cert_file}, {key_file}")
+            raise FileNotFoundError("SSL certificates not found. Please ensure tls_data/server.crt and tls_data/server.key exist.")
+        
+        host = '127.0.0.1'  # Use localhost for HTTPS
+        logger.info(f"Starting Flask development server (HTTPS) on {host}:{port}...")
+        logger.info(f"Server will be available at https://{host}:{port}")
+        
+        # Use Flask's built-in development server with SSL context for HTTPS
+        # This is suitable for development and testing
+        app.run(
+            host=host,
+            port=port,
+            ssl_context=(cert_file, key_file),
+            debug=False,
+            threaded=True
+        )
+    else:
+        host = '0.0.0.0'  # Use all interfaces for HTTP
+        logger.info(f"Starting Flask server with Waitress (HTTP) on {host}:{port}...")
+        logger.info(f"Server will be available at http://{host}:{port}")
+        
+        # Use Waitress as the production WSGI server for HTTP
+        # Waitress is thread-safe and works well in background threads
+        serve(
+            app,
+            host=host,
+            port=port,
+            threads=4,  # Number of threads to handle requests
+            connection_limit=100,  # Maximum number of connections
+            cleanup_interval=30,  # Cleanup interval in seconds
+            channel_timeout=120,  # Channel timeout in seconds
+            log_socket_errors=True,  # Log socket errors
+            max_request_header_size=262144,  # 256KB max header size
+            max_request_body_size=1073741824,  # 1GB max body size
+            expose_tracebacks=False,  # Don't expose tracebacks in production
+            ident='waitress-flask-mcp-server'  # Server identification
+        )
 
 
 if __name__ == "__main__":
@@ -415,6 +441,10 @@ if __name__ == "__main__":
         type=int,
         default=8080,
         help="Flask server port (default: 8080)")
+    parser.add_argument(
+        "--https",
+        action='store_true',
+        help="Enable HTTPS using certificates in tls_data/ directory")
     args = parser.parse_args()
 
     # Set the global port variable
@@ -427,10 +457,12 @@ if __name__ == "__main__":
     # MCP server runs in stdio mode, so Flask must run in a separate thread
     flask_thread = threading.Thread(
         target=run_flask_server, args=(
-            args.port,), daemon=True)
+            args.port, args.https), daemon=True)
     flask_thread.start()
 
-    print(f"Flask server starting on port {args.port}")
+    protocol = "HTTPS" if args.https else "HTTP"
+    host = "127.0.0.1" if args.https else "0.0.0.0"
+    print(f"Flask server starting on {protocol}://{host}:{args.port}")
     print("MCP server starting on stdio...")
     print("Use Ctrl+C to stop both servers")
 

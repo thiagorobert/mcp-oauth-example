@@ -11,3 +11,4 @@ decode.py
 # local secrets
 .env
 github_token.json
+tls_data/

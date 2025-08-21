@@ -87,6 +87,37 @@ Optional environment variables:
 - `DYNAMIC_CLIENT_ID`: For OAuth callback demonstration
 - `DYNAMIC_CLIENT_SECRET`: For OAuth callback demonstration
 
+## HTTPS Support
+
+The Flask server supports HTTPS using SSL/TLS certificates located in the `tls_data/` directory. When HTTPS is enabled, the server automatically binds to `127.0.0.1` for localhost access.
+
+### SSL Certificate Requirements
+- **Certificate file**: `tls_data/server.crt`
+- **Private key file**: `tls_data/server.key`
+- The certificate should include `DNS:localhost` in the Subject Alternative Name for local development
+
+### HTTPS Usage
+```bash
+# Start HTTPS server on default port 8080
+python flask_mcp_server.py --https
+# Server will be available at https://127.0.0.1:8080
+
+# Start HTTPS server on custom port
+python flask_mcp_server.py --https --port 8443
+# Server will be available at https://127.0.0.1:8443
+```
+
+### Testing HTTPS
+```bash
+# Test HTTPS connectivity
+curl -k https://127.0.0.1:8080/
+
+# Use the test script for standalone HTTPS testing
+python test_https.py
+```
+
+**Note**: When using HTTPS mode, the Flask development server is used instead of Waitress for SSL support. For production HTTPS deployments, consider using a reverse proxy like nginx with proper SSL termination.
+
 ## Development Commands
 
 ### OAuth Client (Authentication Only)
@@ -124,6 +155,13 @@ python flask_mcp_server.py
 
 # Run with custom port
 python flask_mcp_server.py --port 3000
+
+# Run with HTTPS using certificates in tls_data/ directory
+python flask_mcp_server.py --https
+# This will start the server at https://127.0.0.1:8080
+
+# Run HTTPS on custom port
+python flask_mcp_server.py --https --port 8443
 
 # All configuration is now handled via environment variables
 ```
