@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Decoder - {{ decoded_type }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="decode-container">
+        <h1>🔐 {{ decoded_type }} Token Decoder</h1>
+        <p><strong>Token Type:</strong> {{ token_type.title() }} Token</p>
+        
+        <div class="decode-section">
+            <h3>📋 Header</h3>
+            <div class="json-content">{{ header | tojson(indent=2) }}</div>
+        </div>
+        
+        <div class="decode-section">
+            <h3>📦 Payload</h3>
+            <div class="json-content">{{ formatted_payload | tojson(indent=2) }}</div>
+        </div>
+        
+        {% if validity_info %}
+        <div class="decode-section">
+            <h3>⏰ Token Validity</h3>
+            <div class="info-grid">
+                {% if validity_info.issued_at %}
+                <div class="info-label">Issued:</div>
+                <div class="info-value">{{ validity_info.issued_at }}</div>
+                {% endif %}
+                {% if validity_info.expires_at %}
+                <div class="info-label">Expires:</div>
+                <div class="info-value">{{ validity_info.expires_at }}</div>
+                {% endif %}
+            </div>
+            {% if validity_info.status %}
+            <div class="validity {{ validity_info.status_class }}">
+                <strong>Status:</strong> {{ validity_info.status }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        {% if signature %}
+        <div class="decode-section">
+            <h3>🔐 Signature</h3>
+            <div class="info-grid">
+                <div class="info-label">Base64URL:</div>
+                <div class="info-value">{{ signature[:50] }}...</div>
+                <div class="info-label">Length:</div>
+                <div class="info-value">{{ signature|length }} characters</div>
+            </div>
+        </div>
+        {% else %}
+        <div class="decode-section">
+            <h3>🔐 Encryption</h3>
+            <p>This token was encrypted (JWE) and has been successfully decrypted.</p>
+        </div>
+        {% endif %}
+        
+        <a href="javascript:window.close()" class="btn">Close Window</a>
+    </div>
+</body>
+</html>

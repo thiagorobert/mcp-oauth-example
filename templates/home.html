@@ -54,11 +54,7 @@
                     <div class="info-grid">
                         {% if session.access_token %}
                             <div class="info-label">Access Token:</div>
-                            <div class="token-row">
-                                <div class="info-value">{{ session.access_token[:30] }}...</div>
-                                <a href="/decode?token={{ session.access_token | urlencode }}&type=access" 
-                                   class="btn-small" target="_blank" rel="noopener noreferrer">Decode</a>
-                            </div>
+                            <div class="info-value">{{ session.access_token[:30] }}...</div>
                         {% endif %}
                         
                         {% if session.token_type %}

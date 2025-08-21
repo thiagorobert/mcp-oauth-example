@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Decoder - Error</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="decode-container">
+        <div class="error">
+            <h2>{{ error_title | default("❌ Token Decoding Failed") }}</h2>
+            <p>{{ error_message }}</p>
+            {% if error_details %}
+            <p>{{ error_details }}</p>
+            {% endif %}
+        </div>
+        <a href="javascript:window.close()" class="btn">Close Window</a>
+    </div>
+</body>
+</html>
