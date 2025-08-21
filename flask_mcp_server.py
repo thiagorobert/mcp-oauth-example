@@ -10,7 +10,6 @@ The MCP server logic is implemented in mcp_server.py for better separation of co
 import argparse
 import json
 import threading
-import urllib.parse
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote_plus, urlencode
@@ -33,12 +32,15 @@ logger = logging_config.configure_logger("flask_mcp_server")
 # Load configuration
 config = get_config()
 
+# Global port variable (set at startup)
+flask_port = 8080
+
 
 class OAuth2Client:
     """OAuth2 client for Auth0 authentication."""
 
     def __init__(self, client_id: str, client_secret: str, auth0_domain: str,
-                 redirect_uri: str):
+                 redirect_uri: str, port: int = 8080):
         self.client_id = client_id
         self.client_secret = client_secret
         self.auth0_domain = auth0_domain
@@ -46,22 +48,7 @@ class OAuth2Client:
         self.token_url = f"https://{auth0_domain}/oauth/token"
         self.userinfo_url = f"https://{auth0_domain}/userinfo"
         self.redirect_uri = redirect_uri
-
-    def generate_auth_url(self, state: str) -> str:
-        """Generate the authorization URL for OAuth flow."""
-        params = {
-            'response_type': 'code',
-            'client_id': self.client_id,
-            'redirect_uri': self.redirect_uri,
-            'scope': 'openid profile email',
-            'state': state,
-        }
-
-        query_string = urllib.parse.urlencode(params)
-        auth_url = f"{self.authorization_url}?{query_string}"
-
-        logger.debug(f"Generated auth URL: {auth_url}")
-        return auth_url
+        self.port = port
 
     def exchange_code_for_token(self, code: str) -> dict[str, Any] | None:
         """Exchange authorization code for access token."""
@@ -137,17 +124,15 @@ oauth.register(
     server_metadata_url=f'https://{config.auth0_domain}/.well-known/openid-configuration',
 )
 
-# MCP server functionality is now in mcp_server.py
 
 # Flask routes
-
-
 @app.route("/")
 def home():
+    user_data = session.get("user")
     return render_template(
         "home.html",
-        session=session.get("user"),
-        pretty=json.dumps(session.get("user"), indent=4),
+        session=user_data,
+        raw_json=json.dumps(user_data, indent=4) if user_data else None,
     )
 
 
@@ -225,7 +210,8 @@ def dynamic_application_callback():
                 client_id=config.dynamic_client_id,
                 client_secret=config.dynamic_client_secret,
                 auth0_domain=config.auth0_domain,
-                redirect_uri=redirect_uri
+                redirect_uri=redirect_uri,
+                port=flask_port
             )
 
             # Exchange code for token
@@ -288,6 +274,16 @@ def dynamic_application_callback():
             'picture': None
         }
 
+    # Prepare raw JSON data for display
+    raw_data = {
+        'success': success,
+        'callback_info': callback_info.__dict__ if hasattr(callback_info, '__dict__') else callback_info,
+        'token_info': token_info,
+        'user_info': user_info,
+        'error_message': error_message,
+        'error_description': error_description
+    }
+    
     return render_template(
         'callback.html',
         success=success,
@@ -297,7 +293,8 @@ def dynamic_application_callback():
         token_info=token_info,
         user_info=user_info,
         auto_close=False,
-        auto_close_delay=3000
+        auto_close_delay=3000,
+        raw_json=json.dumps(raw_data, indent=4)
     )
 
 
@@ -625,6 +622,9 @@ if __name__ == "__main__":
         default=8080,
         help="Flask server port (default: 8080)")
     args = parser.parse_args()
+
+    # Set the global port variable
+    flask_port = args.port
 
     # Set the GitHub token in the MCP server
     set_github_token(config.github_token)

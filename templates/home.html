@@ -1,24 +1,162 @@
-<html>
-  <head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flask + MCP Server Example</title>
-  </head>
-  <body>
-    {% if session %}
-    <h1>Welcome {{session.userinfo.name}}!</h1>
-    <p><a href="/logout" id="qsLogoutBtn">Logout</a></p>
-    <div><pre>{{pretty}}</pre></div>
-    <hr>
-    <h2>Application Status</h2>
-    <p>This application runs both a Flask web server (Waitress WSGI, default port 8080) and an MCP server on stdio.</p>
-    <p>Available MCP tools: list_repositories, get_repository_info, get_user_info</p>
-    {% else %}
-    <h1 id="profileDropDown">Welcome Guest</h1>
-    <p><a href="/login" id="qsLoginBtn">Login</a></p>
-    <hr>
-    <h2>Application Status</h2>
-    <p>This application runs both a Flask web server (Waitress WSGI, default port 8080) and an MCP server on stdio.</p>
-    <p>Available MCP tools: list_repositories, get_repository_info, get_user_info</p>
-    {% endif %}
-  </body>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        {% if session %}
+            <div class="success">
+                <h1>✅ Welcome {{ session.userinfo.name if session.userinfo and session.userinfo.name else 'User' }}!</h1>
+                <p>You are successfully authenticated and logged in.</p>
+            </div>
+            
+            {% if session.userinfo %}
+                <div class="info-section">
+                    <h3>👤 User Information</h3>
+                    <div class="info-grid">
+                        {% if session.userinfo.name %}
+                            <div class="info-label">Name:</div>
+                            <div class="info-value">{{ session.userinfo.name }}</div>
+                        {% endif %}
+                        
+                        {% if session.userinfo.nickname %}
+                            <div class="info-label">Nickname:</div>
+                            <div class="info-value">{{ session.userinfo.nickname }}</div>
+                        {% endif %}
+                        
+                        {% if session.userinfo.email %}
+                            <div class="info-label">Email:</div>
+                            <div class="info-value">{{ session.userinfo.email }}</div>
+                        {% endif %}
+                        
+                        {% if session.userinfo.sub %}
+                            <div class="info-label">Subject ID:</div>
+                            <div class="info-value">{{ session.userinfo.sub }}</div>
+                        {% endif %}
+                        
+                        {% if session.userinfo.picture %}
+                            <div class="info-label">Profile Picture:</div>
+                            <div class="info-value">
+                                <img src="{{ session.userinfo.picture }}" alt="Profile" style="max-width: 50px; border-radius: 4px;">
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if session.access_token or session.id_token %}
+                <div class="info-section">
+                    <h3>🔑 Authentication Tokens</h3>
+                    <div class="info-grid">
+                        {% if session.access_token %}
+                            <div class="info-label">Access Token:</div>
+                            <div class="token-row">
+                                <div class="info-value">{{ session.access_token[:30] }}...</div>
+                                <a href="/decode?token={{ session.access_token | urlencode }}&type=access" 
+                                   class="btn-small" target="_blank" rel="noopener noreferrer">Decode</a>
+                            </div>
+                        {% endif %}
+                        
+                        {% if session.token_type %}
+                            <div class="info-label">Token Type:</div>
+                            <div class="info-value">{{ session.token_type }}</div>
+                        {% endif %}
+                        
+                        {% if session.expires_in %}
+                            <div class="info-label">Expires In:</div>
+                            <div class="info-value">{{ session.expires_in }} seconds</div>
+                        {% endif %}
+                        
+                        {% if session.id_token %}
+                            <div class="info-label">ID Token:</div>
+                            <div class="token-row">
+                                <div class="info-value">{{ session.id_token[:30] }}...</div>
+                                <a href="/decode?token={{ session.id_token | urlencode }}&type=id" 
+                                   class="btn-small" target="_blank" rel="noopener noreferrer">Decode</a>
+                            </div>
+                        {% endif %}
+                        
+                        {% if session.scope %}
+                            <div class="info-label">Scope:</div>
+                            <div class="info-value">{{ session.scope }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div class="info-section">
+                <h3>🖥️ Application Status</h3>
+                <div class="info-grid">
+                    <div class="info-label">Server Type:</div>
+                    <div class="info-value">Flask web server (Waitress WSGI)</div>
+                    
+                    <div class="info-label">Default Port:</div>
+                    <div class="info-value">8080</div>
+                    
+                    <div class="info-label">MCP Server:</div>
+                    <div class="info-value">Running on stdio</div>
+                    
+                    <div class="info-label">Available MCP Tools:</div>
+                    <div class="info-value">list_repositories, get_repository_info, get_user_info</div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <a href="/logout" class="btn btn-secondary">Logout</a>
+                <button onclick="toggleRawJson()" class="btn btn-primary">Show Raw JSON</button>
+            </div>
+            
+            <div id="raw-json-section" class="info-section" style="display: none;">
+                <h3>📄 Raw JSON Data</h3>
+                <pre class="info-value" style="white-space: pre-wrap; font-size: 0.8rem; max-height: 400px; overflow-y: auto;">{{ raw_json }}</pre>
+            </div>
+            
+        {% else %}
+            <div class="info-section">
+                <h1>Welcome to Flask + MCP Server</h1>
+                <p>Please log in to access your account information and use the application features.</p>
+            </div>
+            
+            <div class="info-section">
+                <h3>🖥️ Application Status</h3>
+                <div class="info-grid">
+                    <div class="info-label">Server Type:</div>
+                    <div class="info-value">Flask web server (Waitress WSGI)</div>
+                    
+                    <div class="info-label">Default Port:</div>
+                    <div class="info-value">8080</div>
+                    
+                    <div class="info-label">MCP Server:</div>
+                    <div class="info-value">Running on stdio</div>
+                    
+                    <div class="info-label">Available MCP Tools:</div>
+                    <div class="info-value">list_repositories, get_repository_info, get_user_info</div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <a href="/login" class="btn btn-primary">Login</a>
+            </div>
+        {% endif %}
+    </div>
+    
+    <script>
+        function toggleRawJson() {
+            const section = document.getElementById('raw-json-section');
+            const button = event.target;
+            
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                button.textContent = 'Hide Raw JSON';
+            } else {
+                section.style.display = 'none';
+                button.textContent = 'Show Raw JSON';
+            }
+        }
+    </script>
+</body>
 </html>

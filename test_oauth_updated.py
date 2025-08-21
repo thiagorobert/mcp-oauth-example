@@ -450,7 +450,7 @@ class TestFlaskRoutes(unittest.TestCase):
         """Test home route without session."""
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Welcome Guest', response.data)
+        self.assertIn(b'Welcome to Flask + MCP Server', response.data)
 
     @patch.object(flask_mcp_server.oauth, 'auth0')
     def test_login_route(self, mock_auth0):

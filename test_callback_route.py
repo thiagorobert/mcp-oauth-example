@@ -339,20 +339,24 @@ class TestDynamicApplicationCallback:
             assert error_desc in content
 
     def test_callback_return_links(self, client):
-        """Test that callback page has proper close notice when auto_close is False."""
+        """Test that callback page has proper navigation when auto_close is False."""
         response = client.get('/dynamic_application_callback?code=test123')
 
         assert response.status_code == 200
         content = response.data.decode()
 
-        # With auto_close=False (default), navigation links and close notice
-        # don't appear
+        # With auto_close=False (default), close notice doesn't appear
         assert 'class="close-notice"' not in content
         assert 'This window should close automatically' not in content
-        assert 'Return to Home' not in content
+
+        # But Close Window button doesn't appear when auto_close=False
         assert 'Close Window' not in content
 
-        # But the success message should still be there
+        # Navigation and utility buttons should always be present
+        assert 'Return to Home' in content
+        assert 'Show Raw JSON' in content
+
+        # The success message should still be there
         assert '✅ Authentication Successful!' in content
 
 

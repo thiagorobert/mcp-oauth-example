@@ -117,12 +117,6 @@ def create_test_config() -> AppConfig:
     )
 
 
-def reset_config() -> None:
-    """Reset the global configuration instance. Useful for testing."""
-    global _config
-    _config = None
-
-
 def get_config() -> AppConfig:
     """Get the global configuration instance.
 

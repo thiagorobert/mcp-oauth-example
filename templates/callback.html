@@ -4,116 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OAuth Callback - Flask + MCP Server</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 2rem;
-            background-color: #f8f9fa;
-            color: #333;
-        }
-        .container {
-            background: white;
-            border-radius: 8px;
-            padding: 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .success {
-            color: #28a745;
-            border: 2px solid #28a745;
-            background-color: #d4edda;
-            padding: 1rem;
-            border-radius: 4px;
-            margin-bottom: 1.5rem;
-        }
-        .error {
-            color: #dc3545;
-            border: 2px solid #dc3545;
-            background-color: #f8d7da;
-            padding: 1rem;
-            border-radius: 4px;
-            margin-bottom: 1.5rem;
-        }
-        .info-section {
-            margin: 1.5rem 0;
-            padding: 1rem;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-            border-left: 4px solid #007bff;
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-        .info-label {
-            font-weight: bold;
-            color: #495057;
-        }
-        .info-value {
-            font-family: 'Monaco', 'Consolas', monospace;
-            background-color: #e9ecef;
-            padding: 0.25rem 0.5rem;
-            border-radius: 3px;
-            word-break: break-all;
-            font-size: 0.9rem;
-        }
-        .actions {
-            margin-top: 2rem;
-            text-align: center;
-        }
-        .btn {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            margin: 0 0.5rem;
-            border: none;
-            border-radius: 4px;
-            text-decoration: none;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-        .btn-primary {
-            background-color: #007bff;
-            color: white;
-        }
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
-        .btn:hover {
-            opacity: 0.9;
-        }
-        .close-notice {
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            color: #856404;
-        }
-        .token-row {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .btn-small {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.8rem;
-            border-radius: 3px;
-            text-decoration: none;
-            background-color: #17a2b8;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-small:hover {
-            background-color: #138496;
-            color: white;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div class="container">
@@ -129,11 +20,7 @@
                     <div class="info-grid">
                         {% if callback_info.code %}
                             <div class="info-label">Authorization Code:</div>
-                            <div class="token-row">
-                                <div class="info-value">{{ callback_info.code[:20] }}...{{ callback_info.code[-10:] }}</div>
-                                <a href="/decode?token={{ callback_info.code | urlencode }}&type=authorization" 
-                                   class="btn-small" target="_blank" rel="noopener noreferrer">Decode</a>
-                            </div>
+                            <div class="info-value">{{ callback_info.code[:20] }}...{{ callback_info.code[-10:] }}</div>
                         {% endif %}
                         
                         {% if callback_info.state %}
@@ -248,12 +135,18 @@
             {% endif %}
         {% endif %}
         
-        {% if auto_close %}
-            <div class="actions">
-                <a href="/" class="btn btn-primary">Return to Home</a>
+        <div class="actions">
+            <a href="/" class="btn btn-primary">Return to Home</a>
+            {% if auto_close %}
                 <button onclick="window.close()" class="btn btn-secondary">Close Window</button>
-            </div>
-        {% endif %}
+            {% endif %}
+            <button onclick="toggleRawJson()" class="btn btn-primary">Show Raw JSON</button>
+        </div>
+        
+        <div id="raw-json-section" class="info-section" style="display: none;">
+            <h3>📄 Raw JSON Data</h3>
+            <pre class="info-value" style="white-space: pre-wrap; font-size: 0.8rem; max-height: 400px; overflow-y: auto;">{{ raw_json }}</pre>
+        </div>
         
         {% if auto_close %}
             <div class="close-notice">
@@ -270,6 +163,19 @@
                 window.close();
             }, {{ auto_close_delay or 3000 }});
         {% endif %}
+        
+        function toggleRawJson() {
+            const section = document.getElementById('raw-json-section');
+            const button = event.target;
+            
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                button.textContent = 'Hide Raw JSON';
+            } else {
+                section.style.display = 'none';
+                button.textContent = 'Show Raw JSON';
+            }
+        }
     </script>
 </body>
 </html>
