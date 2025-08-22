@@ -9,11 +9,8 @@ import json
 import os
 import tempfile
 import unittest
-from datetime import datetime, timezone
 from io import StringIO
-from unittest.mock import Mock, mock_open, patch
-
-import pytest
+from unittest.mock import mock_open, patch
 
 import decode
 
@@ -67,25 +64,25 @@ class TestDecodeJWT(unittest.TestCase):
         # Valid JWT components
         self.valid_header = {"alg": "HS256", "typ": "JWT"}
         self.valid_payload = {"sub": "user123", "exp": 1640995200, "iat": 1640991600}
-        
+
         # Encode components
         self.header_encoded = base64.urlsafe_b64encode(
             json.dumps(self.valid_header).encode('utf-8')
         ).decode('utf-8').rstrip('=')
-        
+
         self.payload_encoded = base64.urlsafe_b64encode(
             json.dumps(self.valid_payload).encode('utf-8')
         ).decode('utf-8').rstrip('=')
-        
+
         self.signature_encoded = "test_signature"
-        
+
         # Valid JWT token
         self.valid_jwt = f"{self.header_encoded}.{self.payload_encoded}.{self.signature_encoded}"
 
     def test_decode_jwt_valid_token(self):
         """Test successful JWT decoding."""
         header, payload, signature = decode.decode_jwt(self.valid_jwt)
-        
+
         self.assertEqual(header, self.valid_header)
         self.assertEqual(payload, self.valid_payload)
         self.assertEqual(signature, self.signature_encoded)
@@ -94,7 +91,7 @@ class TestDecodeJWT(unittest.TestCase):
         """Test JWT decoding with whitespace/newlines."""
         token_with_whitespace = f"  {self.valid_jwt}  \n"
         header, payload, signature = decode.decode_jwt(token_with_whitespace)
-        
+
         self.assertEqual(header, self.valid_header)
         self.assertEqual(payload, self.valid_payload)
         self.assertEqual(signature, self.signature_encoded)
@@ -117,7 +114,7 @@ class TestDecodeJWT(unittest.TestCase):
         """Test JWT decoding with invalid header."""
         invalid_header = "invalid_base64!"
         invalid_jwt = f"{invalid_header}.{self.payload_encoded}.{self.signature_encoded}"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwt(invalid_jwt)
         self.assertIn("Failed to decode header", str(cm.exception))
@@ -126,7 +123,7 @@ class TestDecodeJWT(unittest.TestCase):
         """Test JWT decoding with invalid payload."""
         invalid_payload = "invalid_base64!"
         invalid_jwt = f"{self.header_encoded}.{invalid_payload}.{self.signature_encoded}"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwt(invalid_jwt)
         self.assertIn("Failed to decode payload", str(cm.exception))
@@ -135,7 +132,7 @@ class TestDecodeJWT(unittest.TestCase):
         """Test JWT decoding with non-JSON header."""
         invalid_header = base64.urlsafe_b64encode(b"not json").decode('utf-8').rstrip('=')
         invalid_jwt = f"{invalid_header}.{self.payload_encoded}.{self.signature_encoded}"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwt(invalid_jwt)
         self.assertIn("Failed to decode header", str(cm.exception))
@@ -144,7 +141,7 @@ class TestDecodeJWT(unittest.TestCase):
         """Test JWT decoding with non-JSON payload."""
         invalid_payload = base64.urlsafe_b64encode(b"not json").decode('utf-8').rstrip('=')
         invalid_jwt = f"{self.header_encoded}.{invalid_payload}.{self.signature_encoded}"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwt(invalid_jwt)
         self.assertIn("Failed to decode payload", str(cm.exception))
@@ -165,7 +162,7 @@ class TestDecodeJWE(unittest.TestCase):
     def test_decode_jwe_crypto_not_available(self):
         """Test JWE decoding when cryptography library is not available."""
         jwe_token = "header.key.iv.ciphertext.tag"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwe(jwe_token, self.test_secret)
         self.assertIn("Cryptography library not available", str(cm.exception))
@@ -173,7 +170,7 @@ class TestDecodeJWE(unittest.TestCase):
     def test_decode_jwe_no_secret_key(self):
         """Test JWE decoding without secret key."""
         jwe_token = "header.key.iv.ciphertext.tag"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwe(jwe_token, None)
         self.assertIn("Secret key required", str(cm.exception))
@@ -181,7 +178,7 @@ class TestDecodeJWE(unittest.TestCase):
     def test_decode_jwe_invalid_format_too_few_parts(self):
         """Test JWE decoding with too few parts."""
         invalid_jwe = "header.key.iv.ciphertext"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwe(invalid_jwe, self.test_secret)
         self.assertIn("Invalid JWE format", str(cm.exception))
@@ -189,7 +186,7 @@ class TestDecodeJWE(unittest.TestCase):
     def test_decode_jwe_invalid_format_too_many_parts(self):
         """Test JWE decoding with too many parts."""
         invalid_jwe = "header.key.iv.ciphertext.tag.extra"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwe(invalid_jwe, self.test_secret)
         self.assertIn("Invalid JWE format", str(cm.exception))
@@ -198,7 +195,7 @@ class TestDecodeJWE(unittest.TestCase):
         """Test JWE decoding with invalid header."""
         invalid_header = "invalid_base64!"
         invalid_jwe = f"{invalid_header}.key.iv.ciphertext.tag"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwe(invalid_jwe, self.test_secret)
         self.assertIn("Failed to decode JWE header", str(cm.exception))
@@ -209,9 +206,9 @@ class TestDecodeJWE(unittest.TestCase):
         header_encoded = base64.urlsafe_b64encode(
             json.dumps(unsupported_header).encode('utf-8')
         ).decode('utf-8').rstrip('=')
-        
+
         jwe_token = f"{header_encoded}.key.iv.ciphertext.tag"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwe(jwe_token, self.test_secret)
         self.assertIn("Unsupported JWE key algorithm", str(cm.exception))
@@ -222,9 +219,9 @@ class TestDecodeJWE(unittest.TestCase):
         header_encoded = base64.urlsafe_b64encode(
             json.dumps(unsupported_header).encode('utf-8')
         ).decode('utf-8').rstrip('=')
-        
+
         jwe_token = f"{header_encoded}.key.iv.ciphertext.tag"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwe(jwe_token, self.test_secret)
         self.assertIn("Unsupported JWE encryption algorithm", str(cm.exception))
@@ -234,7 +231,7 @@ class TestDecodeJWE(unittest.TestCase):
         """Test JWE decoding when decryption fails."""
         # Create a JWE token that will fail decryption
         jwe_token = f"{self.header_encoded}.key.aXY.Y2lwaGVydGV4dA.dGFn"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_jwe(jwe_token, self.test_secret)
         self.assertIn("Failed to decrypt with any key derivation method", str(cm.exception))
@@ -248,21 +245,21 @@ class TestDecodeToken(unittest.TestCase):
         # Valid JWT
         header = {"alg": "HS256", "typ": "JWT"}
         payload = {"sub": "user123", "exp": 1640995200}
-        
+
         header_encoded = base64.urlsafe_b64encode(
             json.dumps(header).encode('utf-8')
         ).decode('utf-8').rstrip('=')
-        
+
         payload_encoded = base64.urlsafe_b64encode(
             json.dumps(payload).encode('utf-8')
         ).decode('utf-8').rstrip('=')
-        
+
         self.valid_jwt = f"{header_encoded}.{payload_encoded}.signature"
 
     def test_decode_token_jwt_success(self):
         """Test successful JWT token decoding."""
         result, token_type = decode.decode_token(self.valid_jwt)
-        
+
         self.assertEqual(token_type, "JWT")
         self.assertEqual(len(result), 3)  # header, payload, signature
         self.assertIsInstance(result[0], dict)  # header
@@ -272,7 +269,7 @@ class TestDecodeToken(unittest.TestCase):
         """Test JWT token decoding with secret keys provided."""
         secret_keys = {"APP_SECRET_KEY": "test_secret"}
         result, token_type = decode.decode_token(self.valid_jwt, secret_keys)
-        
+
         self.assertEqual(token_type, "JWT")
 
     @patch('decode.decode_jwe')
@@ -280,19 +277,19 @@ class TestDecodeToken(unittest.TestCase):
         """Test successful JWE token decoding."""
         # Mock JWE decoding success
         mock_decode_jwe.return_value = ({"alg": "dir"}, {"sub": "user"}, None)
-        
+
         invalid_jwt = "invalid.jwt.token"
         secret_keys = {"APP_SECRET_KEY": "test_secret"}
-        
+
         result, token_type = decode.decode_token(invalid_jwt, secret_keys)
-        
+
         self.assertEqual(token_type, "JWE (using APP_SECRET_KEY)")
         mock_decode_jwe.assert_called_once()
 
     def test_decode_token_no_secret_keys_failure(self):
         """Test token decoding failure without secret keys."""
         invalid_token = "invalid.token.format"
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_token(invalid_token)
         self.assertIn("Unable to decode token as either JWT or JWE", str(cm.exception))
@@ -302,10 +299,10 @@ class TestDecodeToken(unittest.TestCase):
         """Test JWE token decoding when all secret keys fail."""
         # Mock JWE decoding to always fail
         mock_decode_jwe.side_effect = ValueError("Decryption failed")
-        
+
         invalid_jwt = "invalid.jwt.token"
         secret_keys = {"KEY1": "secret1", "KEY2": "secret2"}
-        
+
         with self.assertRaises(ValueError) as cm:
             decode.decode_token(invalid_jwt, secret_keys)
         self.assertIn("Unable to decode token as either JWT or JWE", str(cm.exception))
@@ -331,7 +328,7 @@ class TestFormatTimestamp(unittest.TestCase):
         # Test with string
         result = decode.format_timestamp("invalid")
         self.assertEqual(result, "invalid")
-        
+
         # Test with None
         result = decode.format_timestamp(None)
         self.assertEqual(result, "None")
@@ -358,9 +355,9 @@ class TestDisplayFunctions(unittest.TestCase):
             "name": "Test User"
         }
         signature = "test_signature"
-        
+
         decode.display_token_info(header, payload, signature, "JWT")
-        
+
         output = mock_stdout.getvalue()
         self.assertIn("JWT TOKEN DECODER", output)
         self.assertIn("HEADER:", output)
@@ -373,9 +370,9 @@ class TestDisplayFunctions(unittest.TestCase):
         """Test display_token_info for JWE (no signature)."""
         header = {"alg": "dir", "enc": "A256GCM"}
         payload = {"sub": "user123"}
-        
+
         decode.display_token_info(header, payload, None, "JWE")
-        
+
         output = mock_stdout.getvalue()
         self.assertIn("JWE TOKEN DECODER", output)
         self.assertIn("ENCRYPTION:", output)
@@ -390,9 +387,9 @@ class TestDisplayFunctions(unittest.TestCase):
             "iat": 1640991600,
             "nbf": 1640991600
         }
-        
+
         decode.display_token_info(header, payload, "sig")
-        
+
         output = mock_stdout.getvalue()
         self.assertIn("2022-01-01", output)  # Formatted timestamp
         self.assertIn("TOKEN VALIDITY:", output)
@@ -402,9 +399,9 @@ class TestDisplayFunctions(unittest.TestCase):
         """Test display_token_info with expired token."""
         header = {"alg": "HS256"}
         payload = {"exp": 1000000000}  # Very old timestamp
-        
+
         decode.display_token_info(header, payload, "sig")
-        
+
         output = mock_stdout.getvalue()
         self.assertIn("🔴 Status: EXPIRED", output)
 
@@ -412,7 +409,7 @@ class TestDisplayFunctions(unittest.TestCase):
     def test_display_token_header(self, mock_stdout):
         """Test display_token_header function."""
         decode.display_token_header("ACCESS TOKEN")
-        
+
         output = mock_stdout.getvalue()
         self.assertIn("🔑 ACCESS TOKEN", output)
         self.assertIn("=" * 80, output)
@@ -428,14 +425,14 @@ class TestFileProcessing(unittest.TestCase):
             "id_token": "id_token_value",
             "other_field": "other_value"
         }
-        
+
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
             json.dump(test_data, tmp_file)
             tmp_file_path = tmp_file.name
-        
+
         try:
             result = decode.process_json_response(tmp_file_path)
-            
+
             self.assertEqual(len(result), 2)
             self.assertIn(('ACCESS TOKEN', 'access_token_value'), result)
             self.assertIn(('ID TOKEN', 'id_token_value'), result)
@@ -445,14 +442,14 @@ class TestFileProcessing(unittest.TestCase):
     def test_process_json_response_access_token_only(self):
         """Test processing JSON file with only access_token."""
         test_data = {"access_token": "access_token_value"}
-        
+
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
             json.dump(test_data, tmp_file)
             tmp_file_path = tmp_file.name
-        
+
         try:
             result = decode.process_json_response(tmp_file_path)
-            
+
             self.assertEqual(len(result), 1)
             self.assertEqual(result[0], ('ACCESS TOKEN', 'access_token_value'))
         finally:
@@ -463,11 +460,11 @@ class TestFileProcessing(unittest.TestCase):
     def test_process_json_response_no_tokens(self, mock_print, mock_exit):
         """Test processing JSON file with no relevant tokens."""
         test_data = {"other_field": "other_value"}
-        
+
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
             json.dump(test_data, tmp_file)
             tmp_file_path = tmp_file.name
-        
+
         try:
             decode.process_json_response(tmp_file_path)
             mock_print.assert_called_with("Error: No 'access_token' or 'id_token' fields found in JSON file")
@@ -482,7 +479,7 @@ class TestFileProcessing(unittest.TestCase):
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp_file:
             tmp_file.write("invalid json content")
             tmp_file_path = tmp_file.name
-        
+
         try:
             decode.process_json_response(tmp_file_path)
             mock_print.assert_called()
@@ -496,7 +493,7 @@ class TestFileProcessing(unittest.TestCase):
     def test_process_json_response_file_not_found(self, mock_print, mock_exit):
         """Test processing non-existent file."""
         decode.process_json_response("non_existent_file.json")
-        
+
         mock_print.assert_called()
         self.assertTrue(any("not found" in str(call) for call in mock_print.call_args_list))
         mock_exit.assert_called_with(1)
@@ -510,15 +507,15 @@ class TestMainFunction(unittest.TestCase):
         # Valid JWT for testing
         header = {"alg": "HS256", "typ": "JWT"}
         payload = {"sub": "user123"}
-        
+
         header_encoded = base64.urlsafe_b64encode(
             json.dumps(header).encode('utf-8')
         ).decode('utf-8').rstrip('=')
-        
+
         payload_encoded = base64.urlsafe_b64encode(
             json.dumps(payload).encode('utf-8')
         ).decode('utf-8').rstrip('=')
-        
+
         self.valid_jwt = f"{header_encoded}.{payload_encoded}.signature"
 
     @patch('sys.argv', ['decode.py', 'test_token'])
@@ -529,10 +526,10 @@ class TestMainFunction(unittest.TestCase):
         """Test main function with token argument."""
         mock_getenv.return_value = None
         mock_decode.return_value = (({"alg": "HS256"}, {"sub": "user"}, "sig"), "JWT")
-        
+
         with patch('builtins.print'):
             decode.main()
-        
+
         mock_decode.assert_called_once()
         mock_display.assert_called_once()
 
@@ -548,10 +545,10 @@ class TestMainFunction(unittest.TestCase):
         mock_getenv.return_value = None
         mock_process.return_value = [('ACCESS TOKEN', 'test_token')]
         mock_decode.return_value = (({"alg": "HS256"}, {"sub": "user"}, "sig"), "JWT")
-        
+
         with patch('builtins.print'):
             decode.main()
-        
+
         mock_process.assert_called_once()
         mock_decode.assert_called_once()
 
@@ -564,10 +561,10 @@ class TestMainFunction(unittest.TestCase):
         """Test main function with plain text token file."""
         mock_getenv.return_value = None
         mock_decode.return_value = (({"alg": "HS256"}, {"sub": "user"}, "sig"), "JWT")
-        
+
         with patch('builtins.print'):
             decode.main()
-        
+
         mock_decode.assert_called_with('plain.jwt.token', {})
 
     @patch('sys.argv', ['decode.py'])
@@ -579,10 +576,10 @@ class TestMainFunction(unittest.TestCase):
         mock_getenv.return_value = None
         # Mock sys.exit to actually stop execution
         mock_exit.side_effect = SystemExit(1)
-        
+
         with self.assertRaises(SystemExit):
             decode.main()
-        
+
         mock_print.assert_called()
         self.assertTrue(any("Please provide a token" in str(call) for call in mock_print.call_args_list))
         mock_exit.assert_called_with(1)
@@ -596,9 +593,9 @@ class TestMainFunction(unittest.TestCase):
         """Test main function with token decode error."""
         mock_getenv.return_value = None
         mock_decode.side_effect = ValueError("Invalid token")
-        
+
         decode.main()
-        
+
         mock_print.assert_called_with("Error: Invalid token")
         mock_exit.assert_called_with(1)
 
@@ -611,10 +608,10 @@ class TestMainFunction(unittest.TestCase):
         mock_getenv.return_value = None
         # Mock sys.exit to actually stop execution
         mock_exit.side_effect = SystemExit(1)
-        
+
         with self.assertRaises(SystemExit):
             decode.main()
-        
+
         mock_print.assert_called()
         self.assertTrue(any("not found" in str(call) for call in mock_print.call_args_list))
         mock_exit.assert_called_with(1)
@@ -631,19 +628,19 @@ class TestMainFunction(unittest.TestCase):
             elif key == 'AUTH0_CLIENT_SECRET':
                 return 'auth0_secret_value'
             return None
-        
+
         mock_getenv.side_effect = mock_getenv_side_effect
-        
+
         with patch('decode.decode_token') as mock_decode:
             with patch('decode.display_token_info'):
                 mock_decode.return_value = (({"alg": "HS256"}, {"sub": "user"}, "sig"), "JWT")
-                
+
                 decode.main()
-                
+
                 # Check that secrets were loaded
                 args, kwargs = mock_decode.call_args
                 secret_keys = args[1] if len(args) > 1 else kwargs.get('secret_keys', {})
-                
+
                 self.assertIn('APP_SECRET_KEY', secret_keys)
                 self.assertIn('AUTH0_CLIENT_SECRET', secret_keys)
                 self.assertEqual(secret_keys['APP_SECRET_KEY'], 'app_secret_value')
@@ -659,9 +656,9 @@ class TestMainFunction(unittest.TestCase):
         """Test main function JSON file with decode error and secrets available."""
         mock_getenv.side_effect = lambda key: 'secret_value' if key in ['APP_SECRET_KEY', 'AUTH0_CLIENT_SECRET'] else None
         mock_decode.side_effect = ValueError("Decode error")
-        
+
         decode.main()
-        
+
         # Should print helpful error messages for JWE tokens
         printed_messages = [str(call) for call in mock_print.call_args_list]
         error_found = any("Note: This access token appears to be a JWE" in msg for msg in printed_messages)
@@ -677,9 +674,9 @@ class TestMainFunction(unittest.TestCase):
         """Test main function JSON file with decode error and no secrets."""
         mock_getenv.return_value = None
         mock_decode.side_effect = ValueError("Decode error")
-        
+
         decode.main()
-        
+
         # Should print helpful error messages for JWE tokens without secrets
         printed_messages = [str(call) for call in mock_print.call_args_list]
         error_found = any("but no APP_SECRET_KEY was found" in msg for msg in printed_messages)

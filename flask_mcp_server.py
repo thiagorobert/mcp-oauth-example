@@ -11,14 +11,13 @@ import argparse
 import json
 import os
 import threading
+import urllib.parse
 from datetime import datetime, timezone
 from typing import Any
-import urllib.parse
 
 import requests
 from authlib.integrations.flask_client import OAuth
-from flask import (Flask, redirect, render_template,
-                   request, session, url_for)
+from flask import Flask, redirect, render_template, request, session, url_for
 from waitress import serve
 
 import logging_config
@@ -158,11 +157,11 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(
-        "https://"
-        + config.auth0_domain
-        + "/v2/logout?"
-        + urllib.parse.urlencode(
+    logout_url = (
+        "https://" +
+        config.auth0_domain +
+        "/v2/logout?" +
+        urllib.parse.urlencode(
             {
                 "returnTo": url_for("home", _external=True),
                 "client_id": config.auth0_client_id,
@@ -170,6 +169,7 @@ def logout():
             quote_via=urllib.parse.quote_plus,
         )
     )
+    return redirect(logout_url)
 
 
 @app.route("/dynamic_application_callback")
@@ -200,8 +200,8 @@ def dynamic_application_callback():
 
     # If there's a code and Auth0 credentials are available, attempt token
     # exchange
-    if (code and success and config.dynamic_client_id and
-            config.dynamic_client_secret and config.auth0_domain):
+    if (code and success and config.dynamic_client_id
+            and config.dynamic_client_secret and config.auth0_domain):
         try:
             # Create OAuth client with callback URL
             redirect_uri = url_for(
@@ -392,15 +392,15 @@ def run_flask_server(port: int = 8080, https: bool = False):
         # Check for SSL certificates
         cert_file = os.path.join(os.path.dirname(__file__), 'tls_data', 'server.crt')
         key_file = os.path.join(os.path.dirname(__file__), 'tls_data', 'server.key')
-        
+
         if not os.path.exists(cert_file) or not os.path.exists(key_file):
             logger.error(f"SSL certificates not found: {cert_file}, {key_file}")
             raise FileNotFoundError("SSL certificates not found. Please ensure tls_data/server.crt and tls_data/server.key exist.")
-        
+
         host = '127.0.0.1'  # Use localhost for HTTPS
         logger.info(f"Starting Flask development server (HTTPS) on {host}:{port}...")
         logger.info(f"Server will be available at https://{host}:{port}")
-        
+
         # Use Flask's built-in development server with SSL context for HTTPS
         # This is suitable for development and testing
         app.run(
@@ -414,7 +414,7 @@ def run_flask_server(port: int = 8080, https: bool = False):
         host = '0.0.0.0'  # Use all interfaces for HTTP
         logger.info(f"Starting Flask server with Waitress (HTTP) on {host}:{port}...")
         logger.info(f"Server will be available at http://{host}:{port}")
-        
+
         # Use Waitress as the production WSGI server for HTTP
         # Waitress is thread-safe and works well in background threads
         serve(

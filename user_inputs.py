@@ -1,8 +1,8 @@
 """Configuration management for Flask MCP server application.
 
-This module handles environment variable loading and validation using a 
+This module handles environment variable loading and validation using a
 dataclass structure.
-All required environment variables are validated on initialization 
+All required environment variables are validated on initialization
 with assertions.
 """
 
@@ -128,8 +128,8 @@ def get_config() -> AppConfig:
     global _config
     if _config is None:
         # Use test config if in test environment
-        if (os.environ.get('PYTEST_CURRENT_TEST') or
-                os.environ.get('TESTING')):
+        if (os.environ.get('PYTEST_CURRENT_TEST')
+                or os.environ.get('TESTING')):
             _config = create_test_config()
         else:
             _config = load_config()
