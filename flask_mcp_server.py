@@ -462,11 +462,11 @@ if __name__ == "__main__":
 
     protocol = "HTTPS" if args.https else "HTTP"
     host = "127.0.0.1" if args.https else "0.0.0.0"
-    logging.info(f"Flask server starting on {protocol}://{host}:{args.port}")
-    logging.info("MCP server starting on stdio...")
-    logging.info("Use Ctrl+C to stop both servers")
+    logger.info(f"Flask server starting on {protocol}://{host}:{args.port}")
+    logger.info("MCP server starting on stdio...")
+    logger.info("Use Ctrl+C to stop both servers")
 
     try:
         run_mcp_server()
     except KeyboardInterrupt:
-        logging.info("\nShutting down servers...")
+        logger.info("\nShutting down servers...")
