@@ -250,9 +250,12 @@ class TestFlaskMCPServer(unittest.TestCase):
         mcp_server.set_github_token(None)
 
     def test_flask_app_initialization(self):
-        """Test Flask app is properly initialized."""
-        self.assertIsNotNone(flask_mcp_server.app)
-        self.assertIsNotNone(flask_mcp_server.oauth)
+        """Test Flask app can be properly created."""
+        from user_inputs import create_test_config
+        test_config = create_test_config()
+        app, oauth = flask_mcp_server.create_app(test_config)
+        self.assertIsNotNone(app)
+        self.assertIsNotNone(oauth)
         self.assertIsNotNone(mcp_server.mcp)
 
 
@@ -443,8 +446,11 @@ class TestFlaskRoutes(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        flask_mcp_server.app.config['TESTING'] = True
-        self.client = flask_mcp_server.app.test_client()
+        from user_inputs import create_test_config
+        test_config = create_test_config()
+        self.app, _ = flask_mcp_server.create_app(test_config)
+        self.app.config['TESTING'] = True
+        self.client = self.app.test_client()
 
     def test_home_route_no_session(self):
         """Test home route without session."""
@@ -452,19 +458,20 @@ class TestFlaskRoutes(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Welcome to Flask + MCP Server', response.data)
 
-    @patch.object(flask_mcp_server.oauth, 'auth0')
-    def test_login_route(self, mock_auth0):
+    def test_login_route(self):
         """Test login route redirects to Auth0."""
-        # Mock the OAuth client
-        mock_auth0.authorize_redirect.return_value = redirect(
-            'http://test.auth0.com/authorize')
+        # Mock the oauth auth0 client to avoid actual Auth0 calls
+        with patch.object(self.app.extensions['authlib.integrations.flask_client'].auth0,
+                          'authorize_redirect') as mock_authorize:
+            mock_authorize.return_value = redirect('http://test.auth0.com/authorize')
 
-        response = self.client.get('/login')
-        # Should get a redirect to Auth0
-        self.assertEqual(response.status_code, 302)
+            response = self.client.get('/login')
 
-        # Verify the authorize_redirect was called
-        mock_auth0.authorize_redirect.assert_called_once()
+            # Should get a redirect to Auth0
+            self.assertEqual(response.status_code, 302)
+
+            # Verify the authorize_redirect was called
+            mock_authorize.assert_called_once()
 
 
 @pytest.mark.asyncio

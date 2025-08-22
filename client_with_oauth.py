@@ -18,11 +18,23 @@ GITHUB_DEVICE_CODE_URL = "https://github.com/login/device/code"
 GITHUB_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
 TOKEN_FILE = "github_token.json"  # Token storage file
 
-# OAuth configuration - set these as environment variables
-GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
-GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 # Personal Access Token for automated auth
 GITHUB_PERSONAL_ACCESS_TOKEN = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+
+# GitHub OAuth credentials (for backwards compatibility with tests)
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
+
+
+def get_github_client_id() -> str:
+    """Get GitHub client ID from environment variables."""
+    return os.getenv("GITHUB_CLIENT_ID", "")
+
+
+def get_github_client_secret() -> str:
+    """Get GitHub client secret from environment variables."""
+    return os.getenv("GITHUB_CLIENT_SECRET", "")
+
 
 # Global variable to store access token
 _access_token = None
@@ -191,8 +203,8 @@ async def authenticate() -> str | None:
 
 if __name__ == "__main__":
     # These are required for OAuth2
-    assert GITHUB_CLIENT_ID, "required GITHUB_CLIENT_ID not available"
-    assert GITHUB_CLIENT_SECRET, "required GITHUB_CLIENT_SECRET not available"
+    assert get_github_client_id(), "required GITHUB_CLIENT_ID not available"
+    assert get_github_client_secret(), "required GITHUB_CLIENT_SECRET not available"
 
     async def main():
         token = await authenticate()

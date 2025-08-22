@@ -5,6 +5,7 @@ uv.lock
 .coverage
 tf/
 scripts/
+.venv
 
 # local secrets
 .env

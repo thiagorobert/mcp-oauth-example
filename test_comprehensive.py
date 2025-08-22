@@ -80,6 +80,7 @@ class TestClientOAuthAsyncEdgeCases:
         client_with_oauth._access_token = None
 
     @patch('client_with_oauth.httpx.AsyncClient')
+    @patch('client_with_oauth.GITHUB_CLIENT_ID', 'test_client_id')
     async def test_get_device_code_http_error(self, mock_client):
         """Test device code retrieval with HTTP error."""
         mock_client_instance = AsyncMock()
@@ -88,12 +89,12 @@ class TestClientOAuthAsyncEdgeCases:
         )
         mock_client.return_value.__aenter__.return_value = mock_client_instance
 
-        with patch.dict(os.environ, {'GITHUB_CLIENT_ID': 'test_client_id'}):
-            result = await client_with_oauth.get_device_code()
+        result = await client_with_oauth.get_device_code()
 
         assert result is None
 
     @patch('client_with_oauth.httpx.AsyncClient')
+    @patch('client_with_oauth.GITHUB_CLIENT_ID', 'test_client_id')
     async def test_poll_for_token_access_denied(self, mock_client):
         """Test token polling when user denies access."""
         mock_response = Mock()
@@ -103,12 +104,12 @@ class TestClientOAuthAsyncEdgeCases:
         mock_client_instance.post.return_value = mock_response
         mock_client.return_value.__aenter__.return_value = mock_client_instance
 
-        with patch.dict(os.environ, {'GITHUB_CLIENT_ID': 'test_client_id'}):
-            result = await client_with_oauth.poll_for_token("device_code", interval=0.1)
+        result = await client_with_oauth.poll_for_token("device_code", interval=0.1)
 
         assert result is None
 
     @patch('client_with_oauth.httpx.AsyncClient')
+    @patch('client_with_oauth.GITHUB_CLIENT_ID', 'test_client_id')
     async def test_poll_for_token_slow_down(self, mock_client):
         """Test token polling with slow_down error."""
         slow_down_response = Mock()
@@ -122,13 +123,13 @@ class TestClientOAuthAsyncEdgeCases:
             slow_down_response, success_response]
         mock_client.return_value.__aenter__.return_value = mock_client_instance
 
-        with patch.dict(os.environ, {'GITHUB_CLIENT_ID': 'test_client_id'}):
-            with patch('client_with_oauth.asyncio.sleep', new_callable=AsyncMock):
-                result = await client_with_oauth.poll_for_token("device_code", interval=1)
+        with patch('client_with_oauth.asyncio.sleep', new_callable=AsyncMock):
+            result = await client_with_oauth.poll_for_token("device_code", interval=1)
 
         assert result == 'test_token'
 
     @patch('client_with_oauth.httpx.AsyncClient')
+    @patch('client_with_oauth.GITHUB_CLIENT_ID', 'test_client_id')
     async def test_poll_for_token_unknown_error(self, mock_client):
         """Test token polling with unknown error."""
         mock_response = Mock()
@@ -140,8 +141,7 @@ class TestClientOAuthAsyncEdgeCases:
         mock_client_instance.post.return_value = mock_response
         mock_client.return_value.__aenter__.return_value = mock_client_instance
 
-        with patch.dict(os.environ, {'GITHUB_CLIENT_ID': 'test_client_id'}):
-            result = await client_with_oauth.poll_for_token("device_code", interval=0.1)
+        result = await client_with_oauth.poll_for_token("device_code", interval=0.1)
 
         assert result is None
 
@@ -318,8 +318,11 @@ class TestFlaskRoutesComprehensive(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        flask_mcp_server.app.config['TESTING'] = True
-        self.client = flask_mcp_server.app.test_client()
+        from user_inputs import create_test_config
+        test_config = create_test_config()
+        self.app, _ = flask_mcp_server.create_app(test_config)
+        self.app.config['TESTING'] = True
+        self.client = self.app.test_client()
 
     def test_home_route_with_session(self):
         """Test home route with mock session data."""
@@ -365,13 +368,11 @@ class TestErrorConditions:
     async def test_missing_environment_variables(self):
         """Test behavior when environment variables are missing."""
         # Test that the code handles missing env vars gracefully
-        with patch.object(client_with_oauth, 'GITHUB_CLIENT_ID', None):
-            with patch.object(client_with_oauth, 'GITHUB_CLIENT_SECRET', None):
-                with patch.object(client_with_oauth, 'GITHUB_PERSONAL_ACCESS_TOKEN', None):
-                    # These should be None when patched
-                    assert client_with_oauth.GITHUB_CLIENT_ID is None
-                    assert client_with_oauth.GITHUB_CLIENT_SECRET is None
-                    assert client_with_oauth.GITHUB_PERSONAL_ACCESS_TOKEN is None
+        with patch.dict(os.environ, {}, clear=True):
+            # These should be empty when env vars are missing
+            assert client_with_oauth.get_github_client_id() == ""
+            assert client_with_oauth.get_github_client_secret() == ""
+            assert client_with_oauth.GITHUB_PERSONAL_ACCESS_TOKEN is None
 
 
 @pytest.mark.asyncio

@@ -17,7 +17,7 @@ from typing import Any
 
 import requests
 from authlib.integrations.flask_client import OAuth
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, current_app, redirect, render_template, request, session, url_for
 from waitress import serve
 
 import logging_config
@@ -29,8 +29,8 @@ from user_inputs import get_config
 # Set up module-specific logger
 logger = logging_config.configure_logger("flask_mcp_server")
 
-# Load configuration
-config = get_config()
+# Configuration will be loaded after argument parsing
+config = None
 
 # Global port variable (set at startup)
 flask_port = 8080
@@ -107,26 +107,43 @@ class OAuth2Client:
             return None
 
 
-# Initialize Flask app
-app = Flask(__name__)
-app.secret_key = config.app_secret_key
+def create_app(app_config):
+    """Create and configure the Flask application."""
+    app = Flask(__name__)
+    app.secret_key = app_config.app_secret_key
+    # Store config in app for route handlers to access
+    app.config['APP_CONFIG'] = app_config
 
-# Initialize OAuth
-oauth = OAuth(app)
+    # Initialize OAuth
+    oauth = OAuth(app)
 
-oauth.register(
-    "auth0",
-    client_id=config.auth0_client_id,
-    client_secret=config.auth0_client_secret,
-    client_kwargs={
-        "scope": "openid profile email",
-    },
-    server_metadata_url=f'https://{config.auth0_domain}/.well-known/openid-configuration',
-)
+    oauth.register(
+        "auth0",
+        client_id=app_config.auth0_client_id,
+        client_secret=app_config.auth0_client_secret,
+        client_kwargs={
+            "scope": "openid profile email",
+        },
+        server_metadata_url=f'https://{app_config.auth0_domain}/.well-known/openid-configuration',
+    )
+
+    # Register routes
+    app.route("/")(home)
+    app.route("/callback", methods=["GET", "POST"])(callback)
+    app.route("/login")(login)
+    app.route("/logout")(logout)
+    app.route("/dynamic_application_callback")(dynamic_application_callback)
+    app.route("/decode")(decode)
+
+    return app, oauth
 
 
-# Flask routes
-@app.route("/")
+# These will be initialized after config is loaded
+app = None
+oauth = None
+
+
+# Route handler functions (will be registered after app creation)
 def home():
     user_data = session.get("user")
     return render_template(
@@ -136,35 +153,37 @@ def home():
     )
 
 
-@app.route("/callback", methods=["GET", "POST"])
 def callback():
-    if oauth.auth0 is None:
+    from flask import current_app
+    oauth_instance = current_app.extensions.get('authlib.integrations.flask_client')
+    if oauth_instance is None or not hasattr(oauth_instance, 'auth0'):
         raise RuntimeError("Auth0 client not properly initialized")
-    token = oauth.auth0.authorize_access_token()
+    token = oauth_instance.auth0.authorize_access_token()
     session["user"] = token
     return redirect("/")
 
 
-@app.route("/login")
 def login():
-    if oauth.auth0 is None:
+    from flask import current_app
+    oauth_instance = current_app.extensions.get('authlib.integrations.flask_client')
+    if oauth_instance is None or not hasattr(oauth_instance, 'auth0'):
         raise RuntimeError("Auth0 client not properly initialized")
-    return oauth.auth0.authorize_redirect(
+    return oauth_instance.auth0.authorize_redirect(
         redirect_uri=url_for("callback", _external=True)
     )
 
 
-@app.route("/logout")
 def logout():
     session.clear()
+    app_config = current_app.config['APP_CONFIG']
     logout_url = (
         "https://" +
-        config.auth0_domain +
+        app_config.auth0_domain +
         "/v2/logout?" +
         urllib.parse.urlencode(
             {
                 "returnTo": url_for("home", _external=True),
-                "client_id": config.auth0_client_id,
+                "client_id": app_config.auth0_client_id,
             },
             quote_via=urllib.parse.quote_plus,
         )
@@ -172,7 +191,6 @@ def logout():
     return redirect(logout_url)
 
 
-@app.route("/dynamic_application_callback")
 def dynamic_application_callback():
     """Handle OAuth callback with actual token exchange and user info retrieval."""
 
@@ -200,17 +218,18 @@ def dynamic_application_callback():
 
     # If there's a code and Auth0 credentials are available, attempt token
     # exchange
-    if (code and success and config.dynamic_client_id
-            and config.dynamic_client_secret and config.auth0_domain):
+    app_config = current_app.config['APP_CONFIG']
+    if (code and success and app_config.dynamic_client_id
+            and app_config.dynamic_client_secret and app_config.auth0_domain):
         try:
             # Create OAuth client with callback URL
             redirect_uri = url_for(
                 "dynamic_application_callback",
                 _external=True)
             oauth_client = OAuth2Client(
-                client_id=config.dynamic_client_id,
-                client_secret=config.dynamic_client_secret,
-                auth0_domain=config.auth0_domain,
+                client_id=app_config.dynamic_client_id,
+                client_secret=app_config.dynamic_client_secret,
+                auth0_domain=app_config.auth0_domain,
                 redirect_uri=redirect_uri,
                 port=flask_port
             )
@@ -299,7 +318,6 @@ def dynamic_application_callback():
     )
 
 
-@app.route("/decode")
 def decode():
     """Decode JWT/JWE tokens and display formatted information."""
     token = request.args.get('token')
@@ -313,11 +331,12 @@ def decode():
 
     try:
         # Get secret keys from config for JWE decoding
+        app_config = current_app.config['APP_CONFIG']
         secret_keys = {}
-        if config.app_secret_key:
-            secret_keys['APP_SECRET_KEY'] = config.app_secret_key
-        if config.auth0_client_secret:
-            secret_keys['AUTH0_CLIENT_SECRET'] = config.auth0_client_secret
+        if app_config.app_secret_key:
+            secret_keys['APP_SECRET_KEY'] = app_config.app_secret_key
+        if app_config.auth0_client_secret:
+            secret_keys['AUTH0_CLIENT_SECRET'] = app_config.auth0_client_secret
 
         # Decode the token
         (header, payload, signature), decoded_type = decode_token(token, secret_keys)
@@ -445,7 +464,17 @@ if __name__ == "__main__":
         "--https",
         action='store_true',
         help="Enable HTTPS using certificates in tls_data/ directory")
+
+    # Check for help flag first to avoid loading config unnecessarily
+    import sys
+    if "--help" in sys.argv or "-h" in sys.argv:
+        parser.print_help()
+        sys.exit(0)
+
     args = parser.parse_args()
+    # Load configuration after argument parsing
+    config = get_config()
+    app, oauth = create_app(config)
 
     # Set the global port variable
     flask_port = args.port

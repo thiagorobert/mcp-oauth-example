@@ -98,8 +98,19 @@ def test_help_flag():
     # Test help flag works correctly
     cmd = [sys.executable, "flask_mcp_server.py", "--help"]
 
+    # Set up clean environment to avoid coverage interference
+    test_env = {}
+    test_env.update({
+        'TESTING': '1',
+        'GITHUB_TOKEN': 'fake_token',
+        'APP_SECRET_KEY': 'test_secret',
+        'AUTH0_CLIENT_ID': 'test_client_id',
+        'AUTH0_CLIENT_SECRET': 'test_client_secret',
+        'AUTH0_DOMAIN': 'test.auth0.com'
+    })
+
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=5, env=test_env)
         assert result.returncode == 0, f"Help flag test failed with return code {
             result.returncode}"
     except Exception as e:

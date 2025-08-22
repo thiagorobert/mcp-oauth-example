@@ -320,5 +320,6 @@ For detailed testing information, see `TESTING.md`.
 
 ## Directives
 * always perform linting after your changes
+   * ignore files under `.venv` directory
 * always run all tests with `python -m pytest` and ensure they pass after your changes
 * always remove any dead code (use vulture to identify dead code)
