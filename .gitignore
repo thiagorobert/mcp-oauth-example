@@ -7,7 +7,6 @@ pyproject.toml
 tf/
 scripts/
 decode.py
-claude-desktop-example/
 
 # local secrets
 .env

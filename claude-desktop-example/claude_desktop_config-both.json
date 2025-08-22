@@ -1,0 +1,30 @@
+{
+	"mcpServers": {
+		"github_oauth_example": {
+			"command": "uv",
+			"args": [
+				"--directory",
+				"/workspace/github/mcp-oauth-example/claude-desktop-example",
+				"run",
+				"mcp_oauth_example.py"
+			],
+			"env": {
+				"GITHUB_CLIENT_ID": "${GITHUB_CLIENT_ID}",
+				"GITHUB_CLIENT_SECRET": "${GITHUB_CLIENT_SECRET}"
+			}
+		},
+		"big_one": {
+			"command": "uv",
+			"args": [
+				"--directory",
+				"/workspace/github/mcp-oauth-example",
+				"run",
+				"flask_mcp_server.py"
+			],
+			"env": {
+				"GITHUB_CLIENT_ID": "${GITHUB_CLIENT_ID}",
+				"GITHUB_CLIENT_SECRET": "${GITHUB_CLIENT_SECRET}"
+			}
+		}
+	}
+}

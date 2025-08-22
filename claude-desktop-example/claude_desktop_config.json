@@ -1,0 +1,17 @@
+{
+	"mcpServers": {
+		"big_one": {
+			"command": "uv",
+			"args": [
+				"--directory",
+				"/workspace/github/mcp-oauth-example",
+				"run",
+				"flask_mcp_server.py"
+			],
+			"env": {
+				"GITHUB_CLIENT_ID": "${GITHUB_CLIENT_ID}",
+				"GITHUB_CLIENT_SECRET": "${GITHUB_CLIENT_SECRET}"
+			}
+		}
+	}
+}
