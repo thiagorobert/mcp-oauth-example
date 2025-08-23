@@ -1,0 +1,12 @@
+My learning path path:
+- oauth againt github oauth app
+- MCP example: https://modelcontextprotocol.io/quickstart/server (and client)
+- MCP against github (stdio)
+- test with Claude CLI, Claude Desktop
+- RFC7591 (OAuth dynamic clients)
+   - Auth0 to test
+- Flask server + Auth0 + MCP (stdio)
+   - Asynchronous Server Gateway Interface (ASGI)
+- Good doc: https://simplescraper.io/blog/how-to-mcp#transport-protocols-streamable-http-vs-http-sse
+- FastMCP v2: https://github.com/jlowin/fastmcp?tab=readme-ov-file (which has integrated OAuth?)
+   - for HTTPs: https://gofastmcp.com/deployment/self-hosted
