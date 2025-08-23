@@ -542,6 +542,7 @@ class TestMainFunction(unittest.TestCase):
     @patch('builtins.open', new_callable=mock_open, read_data='{"access_token": "test"}')
     def test_main_with_json_file(self, mock_file, mock_getenv, mock_header, mock_display, mock_decode, mock_process):
         """Test main function with JSON file argument."""
+        del mock_file, mock_header  # Unused mock parameters
         mock_getenv.return_value = None
         mock_process.return_value = [('ACCESS TOKEN', 'test_token')]
         mock_decode.return_value = (({"alg": "HS256"}, {"sub": "user"}, "sig"), "JWT")
@@ -559,6 +560,7 @@ class TestMainFunction(unittest.TestCase):
     @patch('builtins.open', new_callable=mock_open, read_data='plain.jwt.token')
     def test_main_with_plain_file(self, mock_file, mock_getenv, mock_display, mock_decode):
         """Test main function with plain text token file."""
+        del mock_file  # Unused mock parameter
         mock_getenv.return_value = None
         mock_decode.return_value = (({"alg": "HS256"}, {"sub": "user"}, "sig"), "JWT")
 
@@ -654,6 +656,7 @@ class TestMainFunction(unittest.TestCase):
     @patch('builtins.print')
     def test_main_json_file_decode_error_with_secrets(self, mock_print, mock_file, mock_getenv, mock_header, mock_decode):
         """Test main function JSON file with decode error and secrets available."""
+        del mock_file, mock_header  # Unused mock parameters
         mock_getenv.side_effect = lambda key: 'secret_value' if key in ['APP_SECRET_KEY', 'AUTH0_CLIENT_SECRET'] else None
         mock_decode.side_effect = ValueError("Decode error")
 
@@ -672,6 +675,7 @@ class TestMainFunction(unittest.TestCase):
     @patch('builtins.print')
     def test_main_json_file_decode_error_no_secrets(self, mock_print, mock_file, mock_getenv, mock_header, mock_decode):
         """Test main function JSON file with decode error and no secrets."""
+        del mock_file, mock_header  # Unused mock parameters
         mock_getenv.return_value = None
         mock_decode.side_effect = ValueError("Decode error")
 

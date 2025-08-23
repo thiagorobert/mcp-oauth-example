@@ -23,7 +23,7 @@ from waitress import serve
 import logging_config
 # Import token decoding functionality
 from decode import decode_token, format_timestamp
-from mcp_server import run_mcp_server, set_github_token
+from mcp_server import run_mcp_server_stdio, set_github_token
 from user_inputs import get_config
 
 # Set up module-specific logger
@@ -34,13 +34,14 @@ config = None
 
 # Global port variable (set at startup)
 flask_port = 8080
+host = "127.0.0.1"
 
 
 class OAuth2Client:
     """OAuth2 client for Auth0 authentication."""
 
     def __init__(self, client_id: str, client_secret: str, auth0_domain: str,
-                 redirect_uri: str, port: int = 8080):
+                 redirect_uri: str, port: int = flask_port):
         self.client_id = client_id
         self.client_secret = client_secret
         self.auth0_domain = auth0_domain
@@ -402,9 +403,6 @@ def decode():
                                error_details="The token may be malformed, encrypted with an unknown key, or not a valid JWT/JWE token.")
 
 
-# MCP server run function is now imported from mcp_server.py
-
-
 def run_flask_server(port: int = 8080, https: bool = False):
     """Run the Flask web server using Waitress for HTTP or Flask dev server for HTTPS."""
     if https:
@@ -416,9 +414,7 @@ def run_flask_server(port: int = 8080, https: bool = False):
             logger.error(f"SSL certificates not found: {cert_file}, {key_file}")
             raise FileNotFoundError("SSL certificates not found. Please ensure tls_data/server.crt and tls_data/server.key exist.")
 
-        host = '127.0.0.1'  # Use localhost for HTTPS
         logger.info(f"Starting Flask development server (HTTPS) on {host}:{port}...")
-        logger.info(f"Server will be available at https://{host}:{port}")
 
         # Use Flask's built-in development server with SSL context for HTTPS
         # This is suitable for development and testing
@@ -430,9 +426,7 @@ def run_flask_server(port: int = 8080, https: bool = False):
             threaded=True
         )
     else:
-        host = '0.0.0.0'  # Use all interfaces for HTTP
         logger.info(f"Starting Flask server with Waitress (HTTP) on {host}:{port}...")
-        logger.info(f"Server will be available at http://{host}:{port}")
 
         # Use Waitress as the production WSGI server for HTTP
         # Waitress is thread-safe and works well in background threads
@@ -458,8 +452,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port",
         type=int,
-        default=8080,
-        help="Flask server port (default: 8080)")
+        default=flask_port,
+        help=f"Flask server port (default: {flask_port})")
     parser.add_argument(
         "--https",
         action='store_true',
@@ -489,13 +483,12 @@ if __name__ == "__main__":
             args.port, args.https), daemon=True)
     flask_thread.start()
 
-    protocol = "HTTPS" if args.https else "HTTP"
-    host = "127.0.0.1" if args.https else "0.0.0.0"
+    protocol = "https" if args.https else "http"
     logger.info(f"Flask server starting on {protocol}://{host}:{args.port}")
     logger.info("MCP server starting on stdio...")
     logger.info("Use Ctrl+C to stop both servers")
 
     try:
-        run_mcp_server()
+        run_mcp_server_stdio()
     except KeyboardInterrupt:
-        logger.info("\nShutting down servers...")
+        logger.info("Shutting down servers...")

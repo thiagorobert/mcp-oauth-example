@@ -12,15 +12,6 @@ from flask_mcp_server import OAuth2Client, create_app
 from user_inputs import create_test_config
 
 
-@pytest.fixture
-def mock_config_with_oauth():
-    """Mock config with OAuth credentials for token exchange tests."""
-    with patch('flask_mcp_server.config') as mock_config:
-        mock_config.dynamic_client_id = "test_client_id"
-        mock_config.dynamic_client_secret = "test_client_secret"
-        mock_config.auth0_domain = "test.auth0.com"
-        yield mock_config
-
 
 class TestDynamicApplicationCallback:
     """Test cases for the /dynamic_application_callback route."""

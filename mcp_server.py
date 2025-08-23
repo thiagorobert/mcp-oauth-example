@@ -153,8 +153,8 @@ Profile URL: {data.get('html_url', 'Unknown')}
 """
 
 
-def run_mcp_server():
+def run_mcp_server_stdio():
     """Run the MCP server in stdio mode."""
     # Ensure logger is configured when MCP server starts
-    logger.debug("Starting MCP server...")
+    logger.debug("Starting MCP server (stdio)...")
     mcp.run(transport='stdio')
