@@ -1,7 +1,7 @@
 [project]
 name = "mcp-oauth-example"
 version = "0.1.0"
-description = "Add your description here"
+description = "An MCP server for the GitHub API, with GitHub device-flow OAuth, Auth0 login, and an RFC 7591 dynamic-client demo"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
